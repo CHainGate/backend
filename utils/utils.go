@@ -1,0 +1,50 @@
+package utils
+
+import (
+	"flag"
+	"github.com/joho/godotenv"
+	"log"
+	"os"
+)
+
+var (
+	Opts *OptsType
+)
+
+type OptsType struct {
+	DbHost     string
+	DbUser     string
+	DbPassword string
+	DbName     string
+	DbPort     string
+	JwtSecret  string
+}
+
+func NewOpts() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("Could not find env file [%v], using defaults", err)
+	}
+
+	o := &OptsType{}
+	flag.StringVar(&o.DbHost, "DB_HOST", lookupEnv("DB_HOST"), "Database Host")
+	flag.StringVar(&o.DbUser, "DB_USER", lookupEnv("DB_USER"), "Database User")
+	flag.StringVar(&o.DbPassword, "DB_PASSWORD", lookupEnv("DB_PASSWORD"), "Database Password")
+	flag.StringVar(&o.DbName, "DB_NAME", lookupEnv("DB_NAME"), "Database Name")
+	flag.StringVar(&o.DbPort, "DB_PORT", lookupEnv("DB_PORT"), "Database Port")
+	flag.StringVar(&o.JwtSecret, "JWT_SECRET", lookupEnv("JWT_SECRET"), "JWT Secret")
+
+	Opts = o
+}
+
+func lookupEnv(key string, defaultValues ...string) string {
+	if val, ok := os.LookupEnv(key); ok {
+		return val
+	}
+	for _, v := range defaultValues {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
