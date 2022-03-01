@@ -8,6 +8,11 @@ COPY go.sum ./
 RUN go mod download
 
 COPY *.go ./
+COPY controller/*.go ./controller/
+COPY database/*.go ./database/
+COPY model/*.go ./model/
+COPY routes/*.go ./routes/
+COPY utils/*.go ./utils/
 
 RUN go build -o /backend-service
 
