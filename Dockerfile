@@ -13,6 +13,7 @@ COPY database/*.go ./database/
 COPY model/*.go ./model/
 COPY routes/*.go ./routes/
 COPY utils/*.go ./utils/
+COPY wait-for-it.sh ./
 
 RUN go build -o /backend-service
 
