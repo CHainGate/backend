@@ -15,6 +15,7 @@ COPY routes/*.go ./routes/
 COPY utils/*.go ./utils/
 COPY wait-for-it.sh ./
 
+RUN ["chmod", "+x", "wait-for-it.sh"]
 RUN go build -o /backend-service
 
 EXPOSE 8000
