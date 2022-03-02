@@ -4,9 +4,13 @@ import (
 	"CHainGate/backend/database"
 	"CHainGate/backend/model"
 	"CHainGate/backend/utils"
+	"crypto/rand"
 	"encoding/json"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"golang.org/x/crypto/bcrypt"
+	"math/big"
 	"net/http"
 	"strconv"
 	"time"
@@ -22,10 +26,25 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	password, _ := bcrypt.GenerateFromPassword([]byte(data["password"]), 14)
 
+	max := big.NewInt(1000000)
+	min := big.NewInt(100000)
+	verificationCode, err := rand.Int(rand.Reader, max.Sub(max, min))
+	if err != nil {
+		return
+	}
+	verificationCode.Add(verificationCode, min)
+
+	emailVerification := model.EmailVerification{
+		Email:            data["email"],
+		VerificationCode: verificationCode.Uint64(),
+	}
+
 	user := model.User{
-		Name:     data["name"],
-		Email:    data["email"],
-		Password: password,
+		Name:               data["name"],
+		Email:              data["email"],
+		Password:           password,
+		IsActive:           false,
+		EmailVerifications: emailVerification,
 	}
 
 	database.DB.Create(&user)
@@ -34,10 +53,43 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	url := utils.Opts.EmailVerificationUrl + "?email=" + user.Email + "&code=" + strconv.FormatUint(user.EmailVerifications.VerificationCode, 10)
+	err = createVerificationEmail(user.Name, user.Email, url)
+	if err != nil {
+		return
+	}
 
 	err = json.NewEncoder(w).Encode(user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+func VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	code := r.URL.Query().Get("code")
+
+	var user model.User
+	//TODO: email verification is not loaded
+	database.DB.Where("email = ?", email).First(&user)
+
+	if user.Id == 0 {
+		return
+	}
+	parsedCode, err := strconv.ParseUint(code, 10, 64)
+	if err != nil {
+		return
+	}
+	if parsedCode == user.EmailVerifications.VerificationCode {
+		user.IsActive = true
+		database.DB.Save(&user)
+	} else {
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(user)
+	if err != nil {
 		return
 	}
 }
@@ -122,4 +174,20 @@ func Logout(w http.ResponseWriter, _ *http.Request) {
 		Expires:  time.Unix(0, 0),
 	}
 	http.SetCookie(w, cookie)
+}
+
+func createVerificationEmail(name string, emailTo string, url string) error {
+	from := mail.NewEmail("CHaingate", utils.Opts.EmailFrom)
+	subject := "Please Verify Your E-Mail"
+	to := mail.NewEmail(name, emailTo)
+	plainTextContent := "Please Verify your E-Mail: " + url
+	htmlContent := "Please Verify your E-Mail: " + url
+	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+	client := sendgrid.NewSendClient(utils.Opts.SendGridApiKey)
+
+	_, err := client.Send(message)
+	if err != nil {
+		return err
+	}
+	return nil
 }

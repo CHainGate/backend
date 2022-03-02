@@ -20,6 +20,7 @@ func Connect() {
 	DB = connection
 
 	err = connection.AutoMigrate(&model.User{})
+	err = connection.AutoMigrate(&model.EmailVerification{})
 	if err != nil {
 		return
 	}
