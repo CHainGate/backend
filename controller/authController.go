@@ -40,11 +40,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := model.User{
-		Name:               data["name"],
-		Email:              data["email"],
-		Password:           password,
-		IsActive:           false,
-		EmailVerifications: emailVerification,
+		Name:              data["name"],
+		Email:             data["email"],
+		Password:          password,
+		IsActive:          false,
+		EmailVerification: emailVerification,
 	}
 
 	database.DB.Create(&user)
@@ -53,7 +53,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	url := utils.Opts.EmailVerificationUrl + "?email=" + user.Email + "&code=" + strconv.FormatUint(user.EmailVerifications.VerificationCode, 10)
+	url := utils.Opts.EmailVerificationUrl + "?email=" + user.Email + "&code=" + strconv.FormatUint(user.EmailVerification.VerificationCode, 10)
 	err = createVerificationEmail(user.Name, user.Email, url)
 	if err != nil {
 		return
@@ -71,8 +71,7 @@ func VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 
 	var user model.User
-	//TODO: email verification is not loaded
-	database.DB.Where("email = ?", email).First(&user)
+	database.DB.Preload("EmailVerification").Where("email = ?", email).First(&user)
 
 	if user.Id == 0 {
 		return
@@ -81,7 +80,7 @@ func VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	if parsedCode == user.EmailVerifications.VerificationCode {
+	if parsedCode == user.EmailVerification.VerificationCode {
 		user.IsActive = true
 		database.DB.Save(&user)
 	} else {
