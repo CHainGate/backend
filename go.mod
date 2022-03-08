@@ -22,5 +22,7 @@ require (
 	github.com/jackc/pgx/v4 v4.15.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.4 // indirect
+	github.com/sendgrid/rest v2.6.8+incompatible // indirect
+	github.com/sendgrid/sendgrid-go v3.11.0+incompatible // indirect
 	golang.org/x/text v0.3.7 // indirect
 )

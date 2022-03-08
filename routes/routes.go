@@ -12,6 +12,7 @@ func Setup() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/register", controller.Register).Methods("POST")
+	router.HandleFunc("/verifyemail", controller.VerifyEmail).Methods("GET")
 	router.HandleFunc("/login", controller.Login).Methods("POST")
 	router.HandleFunc("/user", controller.User).Methods("GET")
 	router.HandleFunc("/logout", controller.Logout).Methods("GET")
