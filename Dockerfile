@@ -13,11 +13,24 @@ COPY *.go ./
 COPY controller/*.go ./controller/
 COPY database/*.go ./database/
 COPY model/*.go ./model/
+COPY openApiSpecifications/* ./openApiSpecifications/
 COPY routes/*.go ./routes/
+COPY service/ ./service/
+COPY swaggerui/ ./swaggerui/
 COPY utils/*.go ./utils/
 COPY wait-for-it.sh ./
 
-RUN ["chmod", "+x", "wait-for-it.sh"]
+RUN apk add --update nodejs npm
+RUN apk add openjdk11
+RUN npm install @openapitools/openapi-generator-cli -g
+RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/config.yaml -g go-server -o ./ --additional-properties=sourceFolder=configApi,packageName=configApi
+RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/public.yaml -g go-server -o ./ --additional-properties=sourceFolder=publicApi,packageNamepublicgApi
+RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/internal.yaml -g go-server -o ./ --additional-properties=sourceFolder=internalApi,packageName=internalApi
+RUN go install golang.org/x/tools/cmd/goimports@latest
+RUN goimports -w .
+RUN go mod download github.com/gorilla/mux
+#RUN ["chmod", "+x", "wait-for-it.sh"]
+#
 RUN go build -o /backend-service
 
 EXPOSE 8000
