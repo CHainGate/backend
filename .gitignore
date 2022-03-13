@@ -16,6 +16,8 @@
 /.env
 
 # OpenApi generics
-openapi
+configApi
+internalApi
+publicApi
 .openapi-generator
 api
