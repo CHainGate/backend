@@ -14,3 +14,10 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 /.env
+
+# OpenApi generics
+configApi
+internalApi
+publicApi
+.openapi-generator
+api

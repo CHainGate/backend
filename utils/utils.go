@@ -2,9 +2,10 @@ package utils
 
 import (
 	"flag"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 var (
