@@ -2,10 +2,11 @@ package routes
 
 import (
 	"CHainGate/backend/controller"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 func Setup() {

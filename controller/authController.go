@@ -6,14 +6,15 @@ import (
 	"CHainGate/backend/utils"
 	"crypto/rand"
 	"encoding/json"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
-	"golang.org/x/crypto/bcrypt"
 	"math/big"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
