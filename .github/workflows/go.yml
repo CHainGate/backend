@@ -18,6 +18,15 @@ jobs:
       with:
         go-version: 1.17
 
+    - name: generate config openApi code
+      run: docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/config.yaml -g go-server -o /local/ --additional-properties=sourceFolder=configApi,packageName=configApi
+    - name: generate public openApi code
+      run: docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/public.yaml -g go-server -o /local/ --additional-properties=sourceFolder=publicApi,packageName=publicApi
+    - name: generate internal openApi code
+      run: docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/internal.yaml -g go-server -o /local/ --additional-properties=sourceFolder=internalApi,packageName=internalApi
+    - name: run goimports
+      run: goimports -w .
+
     - name: Build
       run: go build -v ./...
 

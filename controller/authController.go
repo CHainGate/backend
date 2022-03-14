@@ -190,3 +190,7 @@ func createVerificationEmail(name string, emailTo string, url string) error {
 	}
 	return nil
 }
+
+func Test() string {
+	return "test"
+}
