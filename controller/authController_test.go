@@ -1,12 +1,11 @@
-package tests
+package controller
 
 import (
-	"CHainGate/backend/controller"
 	"testing"
 )
 
 func TestUser(t *testing.T) {
-	result := controller.Test()
+	result := Test()
 
 	if result != "test" {
 		t.Errorf("Test() FAILED. Expected %s, got %s", "test", result)

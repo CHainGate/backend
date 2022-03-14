@@ -13,3 +13,6 @@ docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i 
 docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/internal.yaml -g go-server -o /local/ --additional-properties=sourceFolder=internalApi,packageName=internalApi
 goimports -w .
  ```
+ 
+ Code Coverage 80%
+ 
