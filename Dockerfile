@@ -21,6 +21,7 @@ COPY utils/*.go ./utils/
 COPY wait-for-it.sh ./
 COPY .openapi-generator-ignore ./
 
+# maybe there is a better way to use openapi-generator-cli
 RUN apk add --update nodejs npm
 RUN apk add openjdk11
 RUN npm install @openapitools/openapi-generator-cli -g
@@ -29,7 +30,6 @@ RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/
 RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/internal.yaml -g go-server -o ./ --additional-properties=sourceFolder=internalApi,packageName=internalApi
 RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN goimports -w .
-#RUN go mod download
 
 RUN ["chmod", "+x", "wait-for-it.sh"]
 
