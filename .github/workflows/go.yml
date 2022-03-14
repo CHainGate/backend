@@ -24,6 +24,8 @@ jobs:
       run: docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/public.yaml -g go-server -o /local/ --additional-properties=sourceFolder=publicApi,packageName=publicApi
     - name: generate internal openApi code
       run: docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/internal.yaml -g go-server -o /local/ --additional-properties=sourceFolder=internalApi,packageName=internalApi
+    - name: install goimports
+      run: go install golang.org/x/tools/cmd/goimports@latest
     - name: run goimports
       run: goimports -w .
 
