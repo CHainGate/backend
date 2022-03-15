@@ -12,7 +12,7 @@ RUN go mod download
 COPY *.go ./
 COPY controller/*.go ./controller/
 COPY database/*.go ./database/
-COPY model/*.go ./model/
+COPY models/*.go ./models/
 COPY openApiSpecifications/* ./openApiSpecifications/
 COPY routes/*.go ./routes/
 COPY service/ ./service/
