@@ -9,10 +9,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var (
-	Opts *OptsType
-)
-
 type OptsType struct {
 	ServerPort           int
 	DbHost               string
@@ -25,6 +21,10 @@ type OptsType struct {
 	EmailFrom            string
 	EmailVerificationUrl string
 }
+
+var (
+	Opts *OptsType
+)
 
 func NewOpts() {
 	err := godotenv.Load()
