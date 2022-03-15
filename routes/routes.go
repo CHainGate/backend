@@ -1,15 +1,6 @@
 package routes
 
-import (
-	"CHainGate/backend/controller"
-	"log"
-	"net/http"
-	"strconv"
-
-	"github.com/gorilla/mux"
-)
-
-func Setup() {
+/*func Setup() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/register", controller.Register).Methods("POST")
@@ -23,3 +14,4 @@ func Setup() {
 	log.Printf("listing on port %v", 8000)
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(8000), router))
 }
+*/
