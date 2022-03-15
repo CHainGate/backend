@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	db *gorm.DB
+	DB *gorm.DB
 )
 
 func Connect() {
@@ -26,5 +26,5 @@ func Connect() {
 	err = connection.AutoMigrate(&models.Payment{})
 	err = connection.AutoMigrate(&models.PaymentStatus{})
 
-	db = connection
+	DB = connection
 }

@@ -2,7 +2,6 @@ package controller
 
 import (
 	"CHainGate/backend/database"
-	"CHainGate/backend/model"
 	"CHainGate/backend/utils"
 	"crypto/rand"
 	"encoding/json"
@@ -17,7 +16,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Register(w http.ResponseWriter, r *http.Request) {
+/*func Register(w http.ResponseWriter, r *http.Request) {
 	var data map[string]string
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
@@ -190,7 +189,7 @@ func createVerificationEmail(name string, emailTo string, url string) error {
 		return err
 	}
 	return nil
-}
+}*/
 
 func Test() string {
 	return "test"
