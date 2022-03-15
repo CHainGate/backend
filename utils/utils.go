@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -13,6 +14,7 @@ var (
 )
 
 type OptsType struct {
+	ServerPort           int
 	DbHost               string
 	DbUser               string
 	DbPassword           string
@@ -31,6 +33,7 @@ func NewOpts() {
 	}
 
 	o := &OptsType{}
+	flag.IntVar(&o.ServerPort, "SERVER_PORT", lookupEnvInt("SERVER_PORT", 8000), "Server PORT")
 	flag.StringVar(&o.DbHost, "DB_HOST", lookupEnv("DB_HOST"), "Database Host")
 	flag.StringVar(&o.DbUser, "DB_USER", lookupEnv("DB_USER"), "Database User")
 	flag.StringVar(&o.DbPassword, "DB_PASSWORD", lookupEnv("DB_PASSWORD"), "Database Password")
@@ -54,4 +57,21 @@ func lookupEnv(key string, defaultValues ...string) string {
 		}
 	}
 	return ""
+}
+
+func lookupEnvInt(key string, defaultValues ...int) int {
+	if val, ok := os.LookupEnv(key); ok {
+		v, err := strconv.Atoi(val)
+		if err != nil {
+			log.Printf("LookupEnvInt[%s]: %v", key, err)
+			return 0
+		}
+		return v
+	}
+	for _, v := range defaultValues {
+		if v != 0 {
+			return v
+		}
+	}
+	return 0
 }
