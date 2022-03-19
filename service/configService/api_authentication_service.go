@@ -11,9 +11,15 @@ package configService
 
 import (
 	"CHainGate/backend/configApi"
+	"CHainGate/backend/database"
+	"CHainGate/backend/models"
 	"context"
+	"crypto/rand"
 	"errors"
+	"golang.org/x/crypto/bcrypt"
+	"math/big"
 	"net/http"
+	"time"
 )
 
 // AuthenticationApiService is a service that implements the logic for the AuthenticationApiServicer
@@ -54,8 +60,47 @@ func (s *AuthenticationApiService) Logout(ctx context.Context) (configApi.ImplRe
 
 // RegisterUser - User registration
 func (s *AuthenticationApiService) RegisterUser(ctx context.Context, register configApi.Register) (configApi.ImplResponse, error) {
-	// TODO - update RegisterUser with the required logic for this service method.
-	// Add api_authentication_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	//TODO: maybe use password validator https://github.com/wagslane/go-password-validator
+	password, err := bcrypt.GenerateFromPassword([]byte(register.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
+	}
+
+	// generate random verification code with 6 digits
+	max := big.NewInt(1000000)
+	min := big.NewInt(100000)
+	verificationCode, err := rand.Int(rand.Reader, max.Sub(max, min))
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot generate verification code ")
+	}
+	verificationCode.Add(verificationCode, min)
+
+	// insert to db
+	emailVerification := models.EmailVerification{
+		VerificationCode: verificationCode.Uint64(),
+		CreatedAt:        time.Now(),
+	}
+
+	user := models.User{
+		FirstName:         register.FirstName,
+		LastName:          register.LastName,
+		Email:             register.Email,
+		Password:          password,
+		EmailVerification: emailVerification,
+		IsActive:          false,
+		CreatedAt:         time.Now(),
+	}
+
+	result := database.DB.Create(&user)
+	if result.Error.Error() == "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)" {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("E-Mail already exists")
+	}
+
+	if result.Error != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
+	}
+
+	// send email
 
 	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
 	//return Response(201, nil),nil

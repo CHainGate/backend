@@ -57,6 +57,6 @@ func main() {
 	internalFs := http.FileServer(http.Dir("./swaggerui/internal"))
 	http.Handle("/api/internal/swaggerui/", http.StripPrefix("/api/internal/swaggerui/", internalFs))
 
-	log.Println("Starting proxy-service on port " + strconv.Itoa(utils.Opts.ServerPort))
+	log.Println("Starting backend-service on port " + strconv.Itoa(utils.Opts.ServerPort))
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(utils.Opts.ServerPort), nil))
 }
