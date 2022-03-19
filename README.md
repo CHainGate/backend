@@ -11,6 +11,7 @@ openapi gen:
 docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/config.yaml -g go-server -o /local/ --additional-properties=sourceFolder=configApi,packageName=configApi
 docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/public.yaml -g go-server -o /local/ --additional-properties=sourceFolder=publicApi,packageName=publicApi
 docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/internal.yaml -g go-server -o /local/ --additional-properties=sourceFolder=internalApi,packageName=internalApi
+docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openApiSpecifications/proxy.yaml -g go -o /local/proxyClientApi --ignore-file-override=/local/.openapi-generator-ignore --additional-properties=sourceFolder=proxyClientApi,packageName=proxyClientApi
 goimports -w .
  ```
  
