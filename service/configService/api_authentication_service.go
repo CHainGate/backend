@@ -18,11 +18,14 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"golang.org/x/crypto/bcrypt"
 	"math/big"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // AuthenticationApiService is a service that implements the logic for the AuthenticationApiServicer
@@ -38,16 +41,30 @@ func NewAuthenticationApiService() configApi.AuthenticationApiServicer {
 
 // Login - Authenticate to chaingate
 func (s *AuthenticationApiService) Login(ctx context.Context, login configApi.Login) (configApi.ImplResponse, error) {
-	// TODO - update Login with the required logic for this service method.
-	// Add api_authentication_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	var user models.User
+	result := database.DB.Where("email = ?", login.Email).First(&user)
 
-	//TODO: Uncomment the next line to return response Response(200, Token{}) or use other options such as http.Ok ...
-	//return Response(200, Token{}), nil
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("User or password wrong ")
+	}
 
-	//TODO: Uncomment the next line to return response Response(403, {}) or use other options such as http.Ok ...
-	//return Response(403, nil),nil
+	err := bcrypt.CompareHashAndPassword(user.Password, []byte(login.Password))
+	if err != nil || !user.IsActive {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("User or password wrong ")
+	}
 
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("Login method not implemented")
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+		Issuer:    user.Email,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
+	})
+
+	token, err := claims.SignedString([]byte(utils.Opts.JwtSecret))
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Token signing failed ")
+	}
+	tokenDto := configApi.Token{Token: token}
+
+	return configApi.Response(http.StatusCreated, tokenDto), nil
 }
 
 // Logout - Logs out the user

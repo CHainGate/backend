@@ -12,6 +12,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -45,9 +47,9 @@ func main() {
 
 	internalRouter := internalApi.NewRouter(PaymentUpdateApiController)
 
-	http.Handle("/api/config/", configRouter)
-	http.Handle("/api/public/", publicRouter)
-	http.Handle("/api/internal/", internalRouter)
+	http.Handle("/api/config/", cors.AllowAll().Handler(configRouter))
+	http.Handle("/api/public/", cors.AllowAll().Handler(publicRouter))
+	http.Handle("/api/internal/", cors.AllowAll().Handler(internalRouter))
 
 	// https://ribice.medium.com/serve-swaggerui-within-your-golang-application-5486748a5ed4
 	configFs := http.FileServer(http.Dir("./swaggerui/config"))
