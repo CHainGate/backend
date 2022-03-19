@@ -119,14 +119,15 @@ func (s *AuthenticationApiService) RegisterUser(ctx context.Context, register co
 
 // VerifyEmail - Verify user email
 func (s *AuthenticationApiService) VerifyEmail(ctx context.Context, email string, verificationCode int32) (configApi.ImplResponse, error) {
-	// TODO - update VerifyEmail with the required logic for this service method.
-	// Add api_authentication_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	var user models.User
+	database.DB.Preload("EmailVerification").Where("email = ?", email).First(&user)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	//TODO: openapi don't know uint64, but we can specify a min. value. do we need to change code to int64?
+	if user.EmailVerification.VerificationCode == uint64(verificationCode) {
+		user.IsActive = true
+		database.DB.Save(&user)
+		return configApi.Response(http.StatusNoContent, nil), nil
+	}
 
-	//TODO: Uncomment the next line to return response Response(400, {}) or use other options such as http.Ok ...
-	//return Response(400, nil),nil
-
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("VerifyEmail method not implemented")
+	return configApi.Response(http.StatusBadRequest, nil), errors.New("Wrong e-mail or verification code ")
 }
