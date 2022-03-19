@@ -19,5 +19,6 @@
 configApi
 internalApi
 publicApi
+proxyClientApi
 .openapi-generator
 api

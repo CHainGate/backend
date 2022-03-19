@@ -5,3 +5,5 @@ README.md
 .openapi-generator/
 api/
 **service.go
+
+/proxyClientApi/go.mod

@@ -13,12 +13,15 @@ import (
 	"CHainGate/backend/configApi"
 	"CHainGate/backend/database"
 	"CHainGate/backend/models"
+	"CHainGate/backend/proxyClientApi"
+	"CHainGate/backend/utils"
 	"context"
 	"crypto/rand"
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -92,20 +95,26 @@ func (s *AuthenticationApiService) RegisterUser(ctx context.Context, register co
 	}
 
 	result := database.DB.Create(&user)
-	if result.Error.Error() == "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)" {
-		return configApi.Response(http.StatusBadRequest, nil), errors.New("E-Mail already exists")
-	}
 
 	if result.Error != nil {
+		if result.Error.Error() == "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)" {
+			return configApi.Response(http.StatusBadRequest, nil), errors.New("E-Mail already exists")
+		}
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
 	}
 
 	// send email
+	url := utils.Opts.EmailVerificationUrl + "?email=" + user.Email + "&code=" + strconv.FormatUint(user.EmailVerification.VerificationCode, 10)
+	content := "Please Verify your E-Mail: " + url
+	email := *proxyClientApi.NewEmail(user.FirstName, user.Email, "Verify your E-Mail", content)
+	configuration := proxyClientApi.NewConfiguration()
+	apiClient := proxyClientApi.NewAPIClient(configuration)
+	_, err = apiClient.EmailApi.SendEmail(context.Background()).Email(email).Execute()
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Verification E-Mail could not be sent ")
+	}
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
-
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("RegisterUser method not implemented")
+	return configApi.Response(http.StatusNoContent, nil), nil
 }
 
 // VerifyEmail - Verify user email
