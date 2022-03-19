@@ -18,6 +18,11 @@ paths:
         - authentication
       summary: Authenticate to chaingate
       operationId: login
+      parameters:
+        - in: header
+          name: authorization
+          schema:
+            type: string
       responses:
         '200':
           description: successful operation
@@ -198,8 +203,10 @@ paths:
             enum:
               - test
               - prod
-      security:
-        - bearerAuth: []
+        - in: header
+          name: authorization
+          schema:
+            type: string
       responses:
         '200':
           description: successful operation
