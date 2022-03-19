@@ -158,6 +158,10 @@ paths:
             enum:
               - test
               - prod
+        - in: header
+          name: authorization
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses:
@@ -197,6 +201,10 @@ paths:
             enum:
               - test
               - prod
+        - in: header
+          name: authorization
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses:
