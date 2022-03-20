@@ -16,7 +16,7 @@ type User struct {
 	CreatedAt         time.Time
 	EmailVerification EmailVerification
 	Wallets           []Wallet
-	ApiKey            []ApiKey
+	ApiKeys           []ApiKey
 	Payments          []Payment
 }
 

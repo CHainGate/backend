@@ -92,7 +92,7 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 		key.Key = clearTextApiKey
 	}
 
-	user.ApiKey = append(user.ApiKey, key)
+	user.ApiKeys = append(user.ApiKeys, key)
 	result := database.DB.Save(&user)
 	if result.Error != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
@@ -114,14 +114,36 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 
 // GetApiKey - gets the api key
 func (s *ApiKeyApiService) GetApiKey(ctx context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
-	// TODO - update GetApiKey with the required logic for this service method.
-	// Add api_api_key_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	user, err := checkAuthorizationAndReturnUser(authorization)
+	if err != nil {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, ApiKey{}) or use other options such as http.Ok ...
-	//return Response(200, ApiKey{}), nil
+	enumMode, ok := utils.ParseStringToModeEnum(mode)
+	if !ok {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
+	}
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	enumApiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(keyType)
+	if !ok {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
+	}
 
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("GetApiKey method not implemented")
+	var keys []models.ApiKey
+	result := database.DB.Where("user_id = ? and mode = ? and key_type = ?", user.Id, enumMode.String(), enumApiKeyType.String()).Find(&keys)
+	if result.Error != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("")
+	}
+
+	var resultList []configApi.ApiKey
+	for _, item := range keys {
+		resultList = append(resultList, configApi.ApiKey{
+			Id:        item.Id.String(),
+			Key:       item.Key,
+			KeyType:   item.KeyType,
+			CreatedAt: item.CreatedAt,
+		})
+	}
+
+	return configApi.Response(http.StatusOK, resultList), nil
 }
