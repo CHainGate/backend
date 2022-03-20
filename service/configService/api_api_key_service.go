@@ -11,9 +11,17 @@ package configService
 
 import (
 	"CHainGate/backend/configApi"
+	"CHainGate/backend/database"
+	"CHainGate/backend/models"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"github.com/google/uuid"
 	"net/http"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // ApiKeyApiService is a service that implements the logic for the ApiKeyApiServicer
@@ -28,35 +36,82 @@ func NewApiKeyApiService() configApi.ApiKeyApiServicer {
 }
 
 // DeleteApiKey - delete api key
-func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context) (configApi.ImplResponse, error) {
-	// TODO - update DeleteApiKey with the required logic for this service method.
-	// Add api_api_key_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
-
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
+	/*	user, err := checkAuthorizationAndReturnUser(authorization)
+		if err != nil {
+			return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
+		}*/
 
 	return configApi.Response(http.StatusNotImplemented, nil), errors.New("DeleteApiKey method not implemented")
 }
 
 // GenerateApiKey - create new secret api key
-func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, mode string, authorization string) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization string, apiKeyRequest configApi.ApiKeyRequest) (configApi.ImplResponse, error) {
 	user, err := checkAuthorizationAndReturnUser(authorization)
-
 	if err != nil {
-		return configApi.Response(http.StatusForbidden, nil), err
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	// TODO - update GenerateApiKey with the required logic for this service method.
+	//TODO: validate mode and keytype
+	key := models.ApiKey{
+		Id:        uuid.New(),
+		Mode:      apiKeyRequest.Mode,
+		KeyType:   apiKeyRequest.KeyType,
+		IsActive:  true,
+		CreatedAt: time.Now(),
+	}
+
+	// generate random api key
+	randomBytes := make([]byte, 64)
+	_, err = rand.Read(randomBytes)
+	if err != nil {
+
+	}
+	clearTextApiKey := base64.StdEncoding.EncodeToString(randomBytes)
+
+	if apiKeyRequest.KeyType == "secret" {
+		apiKeyBeginning := clearTextApiKey[0:4]
+		apiKeyEnding := clearTextApiKey[len(clearTextApiKey)-5 : len(clearTextApiKey)-1]
+		encryptedApiKey, err := bcrypt.GenerateFromPassword([]byte(clearTextApiKey), bcrypt.DefaultCost)
+		if err != nil {
+			return configApi.Response(http.StatusInternalServerError, nil), errors.New("Key generation failed ")
+		}
+		key.EncryptedKey = encryptedApiKey
+		key.Key = apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
+	} else {
+		key.Key = clearTextApiKey
+	}
+
+	user.ApiKey = append(user.ApiKey, key)
+	result := database.DB.Save(&user)
+	if result.Error != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User cound not be updated ")
+	}
+
+	apiKeyDto := configApi.ApiKey{
+		Id:        key.Id.String(),
+		KeyType:   key.KeyType,
+		CreatedAt: key.CreatedAt,
+	}
+
+	if apiKeyRequest.KeyType == "secret" {
+		apiKeyDto.Key = clearTextApiKey
+	} else {
+		apiKeyDto.Key = key.Key
+	}
+	return configApi.Response(http.StatusCreated, apiKeyDto), nil
+}
+
+// GetApiKey - gets the api key
+func (s *ApiKeyApiService) GetApiKey(ctx context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
+	// TODO - update GetApiKey with the required logic for this service method.
 	// Add api_api_key_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
-	//TODO: Uncomment the next line to return response Response(201, ApiKey{}) or use other options such as http.Ok ...
-	//return Response(201, ApiKey{}), nil
+	//TODO: Uncomment the next line to return response Response(200, ApiKey{}) or use other options such as http.Ok ...
+	//return Response(200, ApiKey{}), nil
 
 	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
 	//return Response(401, nil),nil
 
-	return configApi.Response(http.StatusNotImplemented, user), nil
+	return configApi.Response(http.StatusNotImplemented, nil), errors.New("GetApiKey method not implemented")
 }
