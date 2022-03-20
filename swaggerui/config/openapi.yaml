@@ -147,8 +147,8 @@ paths:
     get:
       tags:
         - api-key
-      summary: create new secret api key
-      operationId: generateApiKey
+      summary: gets the api key
+      operationId: getApiKey
       parameters:
         - in: query
           name: mode
@@ -158,6 +158,14 @@ paths:
             enum:
               - test
               - prod
+        - in: query
+          name: key_type
+          required: true
+          schema:
+            type: string
+            enum:
+              - secret
+              - public
         - in: header
           name: authorization
           schema:
@@ -165,19 +173,54 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '201':
-          description: new wallet created
+        '200':
+          description: return
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiKey'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags:
+        - api-key
+      summary: create new secret api key
+      operationId: generateApiKey
+      parameters:
+        - in: header
+          name: authorization
+          schema:
+            type: string
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '201':
+          description: API key generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+      requestBody:
+        $ref: '#/components/requestBodies/ApiKeyRequest'
+  /apiKey/{api_key_id}:
     delete:
       tags:
         - api-key
       summary: delete api key
       operationId: deleteApiKey
+      parameters:
+        - in: path
+          name: api_key_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: authorization
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses:
@@ -185,7 +228,7 @@ paths:
           description: api key deleted
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-    
+
   /logging:
     get:
       tags:
@@ -243,6 +286,11 @@ components:
         application/json:
           schema: 
             $ref: '#/components/schemas/WalletRequest'
+    ApiKeyRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiKeyRequest'
   schemas:
     Login:
       title: Login
@@ -324,8 +372,33 @@ components:
       title: Api Key
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         key:
           type: string
+        key_type:
+          type: string
+          enum:
+            - secret
+            - public
+        created_at:
+          type: string
+          format: date-time
+    ApiKeyRequest:
+      title: Api Key Request
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - test
+            - main
+        key_type:
+          type: string
+          enum:
+            - secret
+            - public
     Logging:
       title: Logging Informations
       type: object

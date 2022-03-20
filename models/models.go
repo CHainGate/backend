@@ -16,7 +16,7 @@ type User struct {
 	CreatedAt         time.Time
 	EmailVerification EmailVerification
 	Wallets           []Wallet
-	ApiKey            ApiKey
+	ApiKeys           []ApiKey
 	Payments          []Payment
 }
 
@@ -37,10 +37,14 @@ type Wallet struct {
 }
 
 type ApiKey struct {
-	Id     uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
-	UserId uuid.UUID
-	Mode   string
-	Key    []byte
+	Id           uuid.UUID `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	UserId       uuid.UUID `gorm:"index:api_key_index,unique"`
+	Mode         string    `gorm:"index:api_key_index,unique"`
+	Key          string
+	KeyType      string `gorm:"index:api_key_index,unique"`
+	EncryptedKey []byte
+	IsActive     bool `gorm:"index:api_key_index,unique,where:is_active = true"`
+	CreatedAt    time.Time
 }
 
 type Payment struct {

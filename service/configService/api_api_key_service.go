@@ -11,9 +11,18 @@ package configService
 
 import (
 	"CHainGate/backend/configApi"
+	"CHainGate/backend/database"
+	"CHainGate/backend/models"
+	"CHainGate/backend/utils"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"github.com/google/uuid"
 	"net/http"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // ApiKeyApiService is a service that implements the logic for the ApiKeyApiServicer
@@ -28,35 +37,117 @@ func NewApiKeyApiService() configApi.ApiKeyApiServicer {
 }
 
 // DeleteApiKey - delete api key
-func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context) (configApi.ImplResponse, error) {
-	// TODO - update DeleteApiKey with the required logic for this service method.
-	// Add api_api_key_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
+	user, err := checkAuthorizationAndReturnUser(authorization)
+	if err != nil {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
-
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("DeleteApiKey method not implemented")
+	result := database.DB.Model(&models.ApiKey{}).Where("id = ? AND user_id = ?", apiKeyId, user.Id).Update("is_active", false)
+	if result.Error != nil {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("")
+	}
+	return configApi.Response(http.StatusNoContent, nil), nil
 }
 
 // GenerateApiKey - create new secret api key
-func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, mode string, authorization string) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization string, apiKeyRequest configApi.ApiKeyRequest) (configApi.ImplResponse, error) {
 	user, err := checkAuthorizationAndReturnUser(authorization)
-
 	if err != nil {
-		return configApi.Response(http.StatusForbidden, nil), err
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	// TODO - update GenerateApiKey with the required logic for this service method.
-	// Add api_api_key_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	mode, ok := utils.ParseStringToModeEnum(apiKeyRequest.Mode)
+	if !ok {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
+	}
 
-	//TODO: Uncomment the next line to return response Response(201, ApiKey{}) or use other options such as http.Ok ...
-	//return Response(201, ApiKey{}), nil
+	apiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(apiKeyRequest.KeyType)
+	if !ok {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
+	}
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	key := models.ApiKey{
+		Id:        uuid.New(),
+		Mode:      mode.String(),
+		KeyType:   apiKeyType.String(),
+		IsActive:  true,
+		CreatedAt: time.Now(),
+	}
 
-	return configApi.Response(http.StatusNotImplemented, user), nil
+	// generate random api key
+	randomBytes := make([]byte, 64)
+	_, err = rand.Read(randomBytes)
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Key generation failed ")
+	}
+	clearTextApiKey := base64.StdEncoding.EncodeToString(randomBytes)
+
+	if apiKeyType == utils.Secret {
+		apiKeyBeginning := clearTextApiKey[0:4]
+		apiKeyEnding := clearTextApiKey[len(clearTextApiKey)-5 : len(clearTextApiKey)-1]
+		encryptedApiKey, err := bcrypt.GenerateFromPassword([]byte(clearTextApiKey), bcrypt.DefaultCost)
+		if err != nil {
+			return configApi.Response(http.StatusInternalServerError, nil), errors.New("Key generation failed ")
+		}
+		key.EncryptedKey = encryptedApiKey
+		key.Key = apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
+	} else {
+		key.Key = clearTextApiKey
+	}
+
+	user.ApiKeys = append(user.ApiKeys, key)
+	result := database.DB.Save(&user)
+	if result.Error != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
+	}
+
+	apiKeyDto := configApi.ApiKey{
+		Id:        key.Id.String(),
+		KeyType:   key.KeyType,
+		CreatedAt: key.CreatedAt,
+	}
+
+	if apiKeyType == utils.Secret {
+		apiKeyDto.Key = clearTextApiKey
+	} else {
+		apiKeyDto.Key = key.Key
+	}
+	return configApi.Response(http.StatusCreated, apiKeyDto), nil
+}
+
+// GetApiKey - gets the api key
+func (s *ApiKeyApiService) GetApiKey(ctx context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
+	user, err := checkAuthorizationAndReturnUser(authorization)
+	if err != nil {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
+	}
+
+	enumMode, ok := utils.ParseStringToModeEnum(mode)
+	if !ok {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
+	}
+
+	enumApiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(keyType)
+	if !ok {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
+	}
+
+	var keys []models.ApiKey
+	result := database.DB.Where("user_id = ? and mode = ? and key_type = ?", user.Id, enumMode.String(), enumApiKeyType.String()).Find(&keys)
+	if result.Error != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("")
+	}
+
+	var resultList []configApi.ApiKey
+	for _, item := range keys {
+		resultList = append(resultList, configApi.ApiKey{
+			Id:        item.Id.String(),
+			Key:       item.Key,
+			KeyType:   item.KeyType,
+			CreatedAt: item.CreatedAt,
+		})
+	}
+
+	return configApi.Response(http.StatusOK, resultList), nil
 }

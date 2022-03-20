@@ -5,9 +5,10 @@ import (
 	"CHainGate/backend/models"
 	"CHainGate/backend/utils"
 	"errors"
-	"github.com/golang-jwt/jwt/v4"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
 )
 
 func checkAuthorizationAndReturnUser(bearer string) (models.User, error) {
