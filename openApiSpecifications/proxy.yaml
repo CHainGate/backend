@@ -1,0 +1,153 @@
+openapi: 3.0.0
+servers:
+  - url: 'http://localhost:8001/api'
+info:
+  description: >-
+    This is the OpenAPI definition of the proxy service.
+  version: 1.0.0
+  title: OpenAPI proxy service
+tags:
+  - name: email
+  - name: webhook
+  - name: exchange rate
+paths:
+  /email:
+    post:
+      tags:
+        - email
+      summary: send email
+      operationId: sendEmail
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          description: bad request
+      requestBody:
+        $ref: '#/components/requestBodies/Email'
+        
+  /exchangeRate:
+    get:
+      tags: 
+        - exchange rate
+      summary: get exchange rate
+      operationId: getExchangeRate
+      parameters:
+        - in: query
+          name: fiat
+          required: true
+          schema:
+            type: string
+        
+        - in: query
+          name: crypto
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeRate'
+        '400':
+          description: bad request
+        
+  /webhook:
+    post:
+      tags: 
+        - webhook
+      summary: send webhook
+      operationId: sendWebhook
+      responses:
+        '200':
+          description: successful operation
+        '400':
+          description: bad request
+      requestBody:
+        $ref: '#/components/requestBodies/WebHook'
+        
+components:
+  requestBodies:
+    Email:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Email'
+    WebHook:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/WebHook'
+  schemas:
+    Email:
+      title: Email
+      type: object
+      required:
+        - name
+        - email_to
+        - subject
+        - content
+      properties:
+        name:
+          type: string
+        email_to:
+          type: string
+        subject:
+          type: string
+        content:
+          type: string
+    ExchangeRate:
+      title: Exchange Rate
+      type: object
+      properties:
+        exchange_rate:
+          type: number
+    WebHook:
+      title: WebHook
+      type: object
+      properties:
+        url:
+          type: string
+        content:
+          $ref: '#/components/schemas/WebHookContent'
+    WebHookContent:
+      title: WebHookContent
+      type: object
+      properties:
+        payment_id:
+          type: integer
+        pay_address:
+         type: string
+        price_amount:
+         type: number
+        price_currency:
+         type: string
+         enum:
+           - usd
+           - chf
+        pay_amount:
+         type: number
+        pay_currency:
+         type: string
+         enum:
+           - eth
+           - btc
+        actually_paid:
+          type: number
+        payment_status:
+         type: string
+         enum:
+           - waiting
+           - partially_paid 
+           - paid
+           - sending
+           - finished
+           - expired
+           - failed
+        created_at:
+         type: string
+         format: date-time
+        updated_at:
+         type: string
+         format: date-time

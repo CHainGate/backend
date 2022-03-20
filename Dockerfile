@@ -25,9 +25,10 @@ COPY .openapi-generator-ignore ./
 RUN apk add --update nodejs npm
 RUN apk add openjdk11
 RUN npm install @openapitools/openapi-generator-cli -g
-RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/config.yaml -g go-server -o ./ --additional-properties=sourceFolder=configApi,packageName=configApi
-RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/public.yaml -g go-server -o ./ --additional-properties=sourceFolder=publicApi,packageName=publicApi
-RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/internal.yaml -g go-server -o ./ --additional-properties=sourceFolder=internalApi,packageName=internalApi
+RUN npx @openapitools/openapi-generator-cli generate -i ./swaggerui/config/openapi.yaml -g go-server -o ./ --additional-properties=sourceFolder=configApi,packageName=configApi
+RUN npx @openapitools/openapi-generator-cli generate -i ./swaggerui/public/openapi.yaml -g go-server -o ./ --additional-properties=sourceFolder=publicApi,packageName=publicApi
+RUN npx @openapitools/openapi-generator-cli generate -i ./swaggerui/internal/openapi.yaml -g go-server -o ./ --additional-properties=sourceFolder=internalApi,packageName=internalApi
+RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/proxy.yaml -g go -o ./proxyClientApi --ignore-file-override=.openapi-generator-ignore --additional-properties=sourceFolder=proxyClientApi,packageName=proxyClientApi
 RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN goimports -w .
 

@@ -42,7 +42,13 @@ func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context) (configApi.ImplResp
 }
 
 // GenerateApiKey - create new secret api key
-func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, mode string) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, mode string, authorization string) (configApi.ImplResponse, error) {
+	user, err := checkAuthorizationAndReturnUser(authorization)
+
+	if err != nil {
+		return configApi.Response(http.StatusForbidden, nil), err
+	}
+
 	// TODO - update GenerateApiKey with the required logic for this service method.
 	// Add api_api_key_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
@@ -52,5 +58,5 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, mode string) (con
 	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
 	//return Response(401, nil),nil
 
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("GenerateApiKey method not implemented")
+	return configApi.Response(http.StatusNotImplemented, user), nil
 }

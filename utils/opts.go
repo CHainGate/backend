@@ -10,15 +10,14 @@ import (
 )
 
 type OptsType struct {
-	ServerPort           int
-	DbHost               string
-	DbUser               string
-	DbPassword           string
-	DbName               string
-	DbPort               string
-	JwtSecret            string
-	SendGridApiKey       string
-	EmailFrom            string
+	ServerPort int
+	DbHost     string
+	DbUser     string
+	DbPassword string
+	DbName     string
+	DbPort     string
+	JwtSecret  string
+
 	EmailVerificationUrl string
 }
 
@@ -40,8 +39,7 @@ func NewOpts() {
 	flag.StringVar(&o.DbName, "DB_NAME", lookupEnv("DB_NAME"), "Database Name")
 	flag.StringVar(&o.DbPort, "DB_PORT", lookupEnv("DB_PORT"), "Database Port")
 	flag.StringVar(&o.JwtSecret, "JWT_SECRET", lookupEnv("JWT_SECRET"), "JWT Secret")
-	flag.StringVar(&o.SendGridApiKey, "SENDGRID_API_KEY", lookupEnv("SENDGRID_API_KEY"), "SendGrid API Key")
-	flag.StringVar(&o.EmailFrom, "EMAIL_FROM", lookupEnv("EMAIL_FROM"), "Email From")
+
 	flag.StringVar(&o.EmailVerificationUrl, "EMAIL_VERIFICATION_URL", lookupEnv("EMAIL_VERIFICATION_URL"), "Email Verification URL")
 
 	Opts = o

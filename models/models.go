@@ -1,8 +1,9 @@
 package models
 
 import (
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type User struct {
@@ -12,6 +13,7 @@ type User struct {
 	Email             string `gorm:"unique"`
 	Password          []byte
 	IsActive          bool
+	CreatedAt         time.Time
 	EmailVerification EmailVerification
 	Wallets           []Wallet
 	ApiKey            ApiKey
@@ -22,6 +24,7 @@ type EmailVerification struct {
 	Id               uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
 	UserId           uuid.UUID
 	VerificationCode uint64
+	CreatedAt        time.Time
 }
 
 type Wallet struct {

@@ -28,7 +28,7 @@ func NewLoggingApiService() configApi.LoggingApiServicer {
 }
 
 // GetLoggingInformation - get logging information
-func (s *LoggingApiService) GetLoggingInformation(ctx context.Context, mode string) (configApi.ImplResponse, error) {
+func (s *LoggingApiService) GetLoggingInformation(ctx context.Context, authentication string, mode string) (configApi.ImplResponse, error) {
 	// TODO - update GetLoggingInformation with the required logic for this service method.
 	// Add api_logging_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 

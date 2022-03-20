@@ -1,6 +1,6 @@
 openapi: 3.0.0
 servers:
-  - url: 'http://localhost/api/config'
+  - url: 'http://localhost:8000/api/config'
 info:
   description: >-
     This is the config OpenAPI definition.
@@ -158,6 +158,10 @@ paths:
             enum:
               - test
               - prod
+        - in: header
+          name: authorization
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses:
@@ -197,6 +201,10 @@ paths:
             enum:
               - test
               - prod
+        - in: header
+          name: authorization
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses:

@@ -11,9 +11,21 @@ package configService
 
 import (
 	"CHainGate/backend/configApi"
+	"CHainGate/backend/database"
+	"CHainGate/backend/models"
+	"CHainGate/backend/proxyClientApi"
+	"CHainGate/backend/utils"
 	"context"
+	"crypto/rand"
 	"errors"
+	"math/big"
 	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // AuthenticationApiService is a service that implements the logic for the AuthenticationApiServicer
@@ -29,16 +41,30 @@ func NewAuthenticationApiService() configApi.AuthenticationApiServicer {
 
 // Login - Authenticate to chaingate
 func (s *AuthenticationApiService) Login(ctx context.Context, login configApi.Login) (configApi.ImplResponse, error) {
-	// TODO - update Login with the required logic for this service method.
-	// Add api_authentication_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	var user models.User
+	result := database.DB.Where("email = ?", login.Email).First(&user)
 
-	//TODO: Uncomment the next line to return response Response(200, Token{}) or use other options such as http.Ok ...
-	//return Response(200, Token{}), nil
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("User or password wrong ")
+	}
 
-	//TODO: Uncomment the next line to return response Response(403, {}) or use other options such as http.Ok ...
-	//return Response(403, nil),nil
+	err := bcrypt.CompareHashAndPassword(user.Password, []byte(login.Password))
+	if err != nil || !user.IsActive {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("User or password wrong ")
+	}
 
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("Login method not implemented")
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+		Issuer:    user.Email,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
+	})
+
+	token, err := claims.SignedString([]byte(utils.Opts.JwtSecret))
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Token signing failed ")
+	}
+	tokenDto := configApi.Token{Token: token}
+
+	return configApi.Response(http.StatusCreated, tokenDto), nil
 }
 
 // Logout - Logs out the user
@@ -54,25 +80,71 @@ func (s *AuthenticationApiService) Logout(ctx context.Context) (configApi.ImplRe
 
 // RegisterUser - User registration
 func (s *AuthenticationApiService) RegisterUser(ctx context.Context, register configApi.Register) (configApi.ImplResponse, error) {
-	// TODO - update RegisterUser with the required logic for this service method.
-	// Add api_authentication_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	//TODO: maybe use password validator https://github.com/wagslane/go-password-validator
+	password, err := bcrypt.GenerateFromPassword([]byte(register.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
+	}
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
+	// generate random verification code with 6 digits
+	max := big.NewInt(1000000)
+	min := big.NewInt(100000)
+	verificationCode, err := rand.Int(rand.Reader, max.Sub(max, min))
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot generate verification code ")
+	}
+	verificationCode.Add(verificationCode, min)
 
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("RegisterUser method not implemented")
+	// insert to db
+	emailVerification := models.EmailVerification{
+		VerificationCode: verificationCode.Uint64(),
+		CreatedAt:        time.Now(),
+	}
+
+	user := models.User{
+		FirstName:         register.FirstName,
+		LastName:          register.LastName,
+		Email:             register.Email,
+		Password:          password,
+		EmailVerification: emailVerification,
+		IsActive:          false,
+		CreatedAt:         time.Now(),
+	}
+
+	result := database.DB.Create(&user)
+
+	if result.Error != nil {
+		if result.Error.Error() == "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)" {
+			return configApi.Response(http.StatusBadRequest, nil), errors.New("E-Mail already exists")
+		}
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
+	}
+
+	// send email
+	url := utils.Opts.EmailVerificationUrl + "?email=" + user.Email + "&code=" + strconv.FormatUint(user.EmailVerification.VerificationCode, 10)
+	content := "Please Verify your E-Mail: " + url
+	email := *proxyClientApi.NewEmail(user.FirstName, user.Email, "Verify your E-Mail", content)
+	configuration := proxyClientApi.NewConfiguration()
+	apiClient := proxyClientApi.NewAPIClient(configuration)
+	_, err = apiClient.EmailApi.SendEmail(context.Background()).Email(email).Execute()
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Verification E-Mail could not be sent ")
+	}
+
+	return configApi.Response(http.StatusNoContent, nil), nil
 }
 
 // VerifyEmail - Verify user email
 func (s *AuthenticationApiService) VerifyEmail(ctx context.Context, email string, verificationCode int32) (configApi.ImplResponse, error) {
-	// TODO - update VerifyEmail with the required logic for this service method.
-	// Add api_authentication_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	var user models.User
+	database.DB.Preload("EmailVerification").Where("email = ?", email).First(&user)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	//TODO: openapi don't know uint64, but we can specify a min. value. do we need to change code to int64?
+	if user.EmailVerification.VerificationCode == uint64(verificationCode) {
+		user.IsActive = true
+		database.DB.Save(&user)
+		return configApi.Response(http.StatusNoContent, nil), nil
+	}
 
-	//TODO: Uncomment the next line to return response Response(400, {}) or use other options such as http.Ok ...
-	//return Response(400, nil),nil
-
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("VerifyEmail method not implemented")
+	return configApi.Response(http.StatusBadRequest, nil), errors.New("Wrong e-mail or verification code ")
 }
