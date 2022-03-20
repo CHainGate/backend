@@ -41,10 +41,10 @@ func (s *PaymentApiService) NewPayment(ctx context.Context, xAPIKEY string, paym
 	if err != nil {
 
 	}
-	encryptedApiKey := mac.Sum(nil)
+	hashedKey := mac.Sum(nil)
 
 	var key models.ApiKey
-	result := database.DB.Where("encrypted_key = ?", hex.EncodeToString(encryptedApiKey)).Find(&key)
+	result := database.DB.Where("encrypted_key = ?", hex.EncodeToString(hashedKey)).Find(&key)
 	if result.RowsAffected == 0 {
 		return publicApi.Response(http.StatusForbidden, nil), errors.New("no authorization")
 	}

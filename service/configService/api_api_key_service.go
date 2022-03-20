@@ -93,8 +93,8 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), errors.New("Key generation failed ")
 		}
-		encryptedApiKey := mac.Sum(nil)
-		key.EncryptedKey = hex.EncodeToString(encryptedApiKey)
+		hashedKey := mac.Sum(nil)
+		key.HashedKey = hex.EncodeToString(hashedKey)
 		key.Key = apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
 	} else {
 		key.Key = clearTextApiKey
