@@ -42,7 +42,7 @@ type ApiKey struct {
 	Mode         string    `gorm:"index:api_key_index,unique"`
 	Key          string
 	KeyType      string `gorm:"index:api_key_index,unique"`
-	EncryptedKey []byte
+	EncryptedKey string
 	IsActive     bool `gorm:"index:api_key_index,unique,where:is_active = true"`
 	CreatedAt    time.Time
 }
