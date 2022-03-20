@@ -13,6 +13,7 @@ import (
 	"CHainGate/backend/configApi"
 	"CHainGate/backend/database"
 	"CHainGate/backend/models"
+	"CHainGate/backend/utils"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -52,11 +53,20 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	//TODO: validate mode and keytype
+	mode, ok := utils.ParseStringToModeEnum(apiKeyRequest.Mode)
+	if !ok {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
+	}
+
+	apiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(apiKeyRequest.KeyType)
+	if !ok {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
+	}
+
 	key := models.ApiKey{
 		Id:        uuid.New(),
-		Mode:      apiKeyRequest.Mode,
-		KeyType:   apiKeyRequest.KeyType,
+		Mode:      mode.String(),
+		KeyType:   apiKeyType.String(),
 		IsActive:  true,
 		CreatedAt: time.Now(),
 	}
@@ -65,11 +75,11 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 	randomBytes := make([]byte, 64)
 	_, err = rand.Read(randomBytes)
 	if err != nil {
-
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Key generation failed ")
 	}
 	clearTextApiKey := base64.StdEncoding.EncodeToString(randomBytes)
 
-	if apiKeyRequest.KeyType == "secret" {
+	if apiKeyType == utils.Secret {
 		apiKeyBeginning := clearTextApiKey[0:4]
 		apiKeyEnding := clearTextApiKey[len(clearTextApiKey)-5 : len(clearTextApiKey)-1]
 		encryptedApiKey, err := bcrypt.GenerateFromPassword([]byte(clearTextApiKey), bcrypt.DefaultCost)
@@ -85,7 +95,7 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 	user.ApiKey = append(user.ApiKey, key)
 	result := database.DB.Save(&user)
 	if result.Error != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User cound not be updated ")
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
 	}
 
 	apiKeyDto := configApi.ApiKey{
@@ -94,7 +104,7 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 		CreatedAt: key.CreatedAt,
 	}
 
-	if apiKeyRequest.KeyType == "secret" {
+	if apiKeyType == utils.Secret {
 		apiKeyDto.Key = clearTextApiKey
 	} else {
 		apiKeyDto.Key = key.Key
