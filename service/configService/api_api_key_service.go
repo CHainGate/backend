@@ -38,12 +38,16 @@ func NewApiKeyApiService() configApi.ApiKeyApiServicer {
 
 // DeleteApiKey - delete api key
 func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
-	/*	user, err := checkAuthorizationAndReturnUser(authorization)
-		if err != nil {
-			return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
-		}*/
+	user, err := checkAuthorizationAndReturnUser(authorization)
+	if err != nil {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
+	}
 
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("DeleteApiKey method not implemented")
+	result := database.DB.Model(&models.ApiKey{}).Where("id = ? AND user_id = ?", apiKeyId, user.Id).Update("is_active", false)
+	if result.Error != nil {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("")
+	}
+	return configApi.Response(http.StatusNoContent, nil), nil
 }
 
 // GenerateApiKey - create new secret api key
