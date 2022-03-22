@@ -11,8 +11,14 @@ package internalService
 
 import (
 	"CHainGate/backend/internalApi"
+	"CHainGate/backend/proxyClientApi"
 	"context"
-	"errors"
+	"crypto/hmac"
+	"crypto/sha512"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -28,15 +34,64 @@ func NewPaymentUpdateApiService() internalApi.PaymentUpdateApiServicer {
 }
 
 // UpdatePayment - update payment
-func (s *PaymentUpdateApiService) UpdatePayment(ctx context.Context, payment internalApi.Payment) (internalApi.ImplResponse, error) {
-	// TODO - update UpdatePayment with the required logic for this service method.
-	// Add api_payment_update_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *PaymentUpdateApiService) UpdatePayment(_ context.Context, payment internalApi.Payment) (internalApi.ImplResponse, error) {
+	// save to db
+	/*	var currentPayment models.Payment
+		database.DB.Where("id = ?", payment.PaymentId).Find(&currentPayment)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+		paymentId, err := uuid.Parse(payment.PaymentId)
+		if err != nil {
+			return internalApi.ImplResponse{}, err
+		}
 
-	//TODO: Uncomment the next line to return response Response(400, {}) or use other options such as http.Ok ...
-	//return Response(400, nil),nil
+		status := models.PaymentStatus{
+			PaymentId: paymentId,
+			PaymentStatus: payment.PaymentStatus,
+			PayAmount: payment.PayAmount,
+			ActuallyPaid: payment.ActuallyPaid,
+			CreatedAt: payment.CreatedAt,
+		}
 
-	return internalApi.Response(http.StatusNotImplemented, nil), errors.New("UpdatePayment method not implemented")
+		currentPayment.PaymentStatus = append(currentPayment.PaymentStatus, status)
+		currentPayment.UpdatedAt = payment.CreatedAt
+
+		result := database.DB.Save(&currentPayment)
+		if result.Error != nil {
+
+		}*/
+
+	// webhookcall
+	body := proxyClientApi.WebHookBody{
+		Data: proxyClientApi.WebHookData{
+			PaymentId:     payment.PaymentId,
+			PayAddress:    payment.PayAddress,
+			PriceAmount:   payment.PricaAmount,
+			PriceCurrency: payment.PriceCurrency,
+			PayAmount:     payment.PayAmount,
+			PayCurrency:   payment.PayCurrency,
+			ActuallyPaid:  *proxyClientApi.NewNullableFloat32(&payment.ActuallyPaid),
+			PaymentStatus: payment.PaymentStatus,
+			CreatedAt:     payment.CreatedAt,
+			UpdatedAt:     payment.UpdatedAt,
+		},
+	}
+
+	mac := hmac.New(sha512.New, []byte("supersecret"))
+	data, err := json.Marshal(body.Data)
+	_, err = io.WriteString(mac, string(data))
+	if err != nil {
+
+	}
+	expectedMAC := mac.Sum(nil)
+	body.Signature = hex.EncodeToString(expectedMAC)
+
+	webhook := *proxyClientApi.NewWebHook("http://localhost:5000/webhook", body)
+	configuration := proxyClientApi.NewConfiguration()
+	apiClient := proxyClientApi.NewAPIClient(configuration)
+	_, err = apiClient.WebhookApi.SendWebhook(context.Background()).WebHook(webhook).Execute()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return internalApi.Response(http.StatusOK, nil), nil
 }

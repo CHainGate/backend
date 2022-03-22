@@ -24,10 +24,10 @@ paths:
           description: bad request
       requestBody:
         $ref: '#/components/requestBodies/Email'
-        
+
   /exchangeRate:
     get:
-      tags: 
+      tags:
         - exchange rate
       summary: get exchange rate
       operationId: getExchangeRate
@@ -37,7 +37,7 @@ paths:
           required: true
           schema:
             type: string
-        
+
         - in: query
           name: crypto
           schema:
@@ -52,10 +52,10 @@ paths:
                 $ref: '#/components/schemas/ExchangeRate'
         '400':
           description: bad request
-        
+
   /webhook:
     post:
-      tags: 
+      tags:
         - webhook
       summary: send webhook
       operationId: sendWebhook
@@ -66,7 +66,7 @@ paths:
           description: bad request
       requestBody:
         $ref: '#/components/requestBodies/WebHook'
-        
+
 components:
   requestBodies:
     Email:
@@ -106,48 +106,75 @@ components:
     WebHook:
       title: WebHook
       type: object
+      required:
+        - url
+        - body
       properties:
         url:
           type: string
-        content:
-          $ref: '#/components/schemas/WebHookContent'
-    WebHookContent:
-      title: WebHookContent
+        body:
+          $ref: '#/components/schemas/WebHookBody'
+    WebHookBody:
+      title: WebHook Body
       type: object
+      required:
+        - data
+        - signature
+      properties:
+        data:
+          $ref: '#/components/schemas/WebHookData'
+        signature:
+          type: string
+    WebHookData:
+      title: WebHook Data
+      type: object
+      required:
+        - payment_id
+        - pay_address
+        - price_amount
+        - price_currency
+        - pay_amount
+        - pay_currency
+        - actually_paid
+        - payment_status
+        - created_at
+        - updated_at
       properties:
         payment_id:
-          type: integer
+          type: string
+          format: uuid
         pay_address:
-         type: string
+          type: string
         price_amount:
-         type: number
+          type: number
         price_currency:
-         type: string
-         enum:
-           - usd
-           - chf
+          type: string
+          enum:
+            - usd
+            - chf
         pay_amount:
-         type: number
+          type: number
         pay_currency:
-         type: string
-         enum:
-           - eth
-           - btc
+          type: string
+          enum:
+            - eth
+            - btc
         actually_paid:
           type: number
+          nullable: true
         payment_status:
-         type: string
-         enum:
-           - waiting
-           - partially_paid 
-           - paid
-           - sending
-           - finished
-           - expired
-           - failed
+          type: string
+          enum:
+            - waiting
+            - partially_paid
+            - paid
+            - sending
+            - finished
+            - expired
+            - failed
         created_at:
-         type: string
-         format: date-time
+          type: string
+          format: date-time
         updated_at:
-         type: string
-         format: date-time
+          type: string
+          format: date-time

@@ -1,6 +1,6 @@
 openapi: 3.0.0
 servers:
-  - url: 'http://localhost/api/internal'
+  - url: 'http://localhost:8000/api/internal'
 info:
   description: >-
     This is the internal OpenAPI definition.
@@ -29,7 +29,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Payment'        
+            $ref: '#/components/schemas/Payment'
   schemas:
     Payment:
       title: Payment
@@ -60,7 +60,7 @@ components:
           type: string
           enum:
             - waiting
-            - partially_paid 
+            - partially_paid
             - paid
             - sending
             - finished
@@ -100,7 +100,7 @@ components:
           type: string
           enum:
             - waiting
-            - partially_paid 
+            - partially_paid
             - paid
             - sending
             - finished
