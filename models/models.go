@@ -63,10 +63,10 @@ type Payment struct {
 }
 
 type PaymentStatus struct {
-	Id             uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
-	PaymentId      uuid.UUID
-	PayAmount      float64 `gorm:"type:numeric"`
-	AmountReceived float64 `gorm:"type:numeric"`
-	PaymentStatus  string
-	CreatedAt      time.Time
+	Id            uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	PaymentId     uuid.UUID
+	PayAmount     float64 `gorm:"type:numeric"`
+	ActuallyPaid  float64 `gorm:"type:numeric"`
+	PaymentStatus string
+	CreatedAt     time.Time
 }
