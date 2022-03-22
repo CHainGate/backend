@@ -18,6 +18,11 @@ paths:
       operationId: newPayment
       security:
         - ApiKeyAuth: []
+      parameters:
+        - in: header
+          name: X-API-KEY
+          schema:
+            type: string
       responses:
         '201':
           description: payment created

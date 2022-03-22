@@ -10,9 +10,16 @@
 package publicService
 
 import (
+	"CHainGate/backend/database"
+	"CHainGate/backend/models"
 	"CHainGate/backend/publicApi"
+	"CHainGate/backend/utils"
 	"context"
+	"crypto/hmac"
+	"crypto/sha512"
+	"encoding/hex"
 	"errors"
+	"io"
 	"net/http"
 )
 
@@ -28,15 +35,25 @@ func NewPaymentApiService() publicApi.PaymentApiServicer {
 }
 
 // NewPayment - Create a new payment
-func (s *PaymentApiService) NewPayment(ctx context.Context, paymentRequest publicApi.PaymentRequest) (publicApi.ImplResponse, error) {
-	// TODO - update NewPayment with the required logic for this service method.
-	// Add api_payment_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *PaymentApiService) NewPayment(ctx context.Context, xAPIKEY string, paymentRequest publicApi.PaymentRequest) (publicApi.ImplResponse, error) {
+	mac := hmac.New(sha512.New, []byte(utils.Opts.ApiKeySecret))
+	_, err := io.WriteString(mac, xAPIKEY)
+	if err != nil {
 
-	//TODO: Uncomment the next line to return response Response(201, Payment{}) or use other options such as http.Ok ...
-	//return Response(201, Payment{}), nil
+	}
+	hashedKey := mac.Sum(nil)
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	var key models.ApiKey
+	result := database.DB.Where("encrypted_key = ?", hex.EncodeToString(hashedKey)).Find(&key)
+	if result.RowsAffected == 0 {
+		return publicApi.Response(http.StatusForbidden, nil), errors.New("no authorization")
+	}
 
-	return publicApi.Response(http.StatusNotImplemented, nil), errors.New("NewPayment method not implemented")
+	// TODO: create blockchain call
+
+	// TODO: save payment to db
+
+	// TODO: map data to dto object
+
+	return publicApi.Response(http.StatusNotImplemented, key), nil
 }

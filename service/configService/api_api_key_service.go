@@ -15,14 +15,16 @@ import (
 	"CHainGate/backend/models"
 	"CHainGate/backend/utils"
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha512"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"github.com/google/uuid"
+	"io"
 	"net/http"
 	"time"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 // ApiKeyApiService is a service that implements the logic for the ApiKeyApiServicer
@@ -85,12 +87,14 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 
 	if apiKeyType == utils.Secret {
 		apiKeyBeginning := clearTextApiKey[0:4]
-		apiKeyEnding := clearTextApiKey[len(clearTextApiKey)-5 : len(clearTextApiKey)-1]
-		encryptedApiKey, err := bcrypt.GenerateFromPassword([]byte(clearTextApiKey), bcrypt.DefaultCost)
+		apiKeyEnding := clearTextApiKey[len(clearTextApiKey)-5:]
+		mac := hmac.New(sha512.New, []byte(utils.Opts.ApiKeySecret))
+		_, err := io.WriteString(mac, clearTextApiKey)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), errors.New("Key generation failed ")
 		}
-		key.EncryptedKey = encryptedApiKey
+		hashedKey := mac.Sum(nil)
+		key.HashedKey = hex.EncodeToString(hashedKey)
 		key.Key = apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
 	} else {
 		key.Key = clearTextApiKey

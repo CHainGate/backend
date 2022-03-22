@@ -10,13 +10,14 @@ import (
 )
 
 type OptsType struct {
-	ServerPort int
-	DbHost     string
-	DbUser     string
-	DbPassword string
-	DbName     string
-	DbPort     string
-	JwtSecret  string
+	ServerPort   int
+	DbHost       string
+	DbUser       string
+	DbPassword   string
+	DbName       string
+	DbPort       string
+	JwtSecret    string
+	ApiKeySecret string
 
 	EmailVerificationUrl string
 }
@@ -39,6 +40,7 @@ func NewOpts() {
 	flag.StringVar(&o.DbName, "DB_NAME", lookupEnv("DB_NAME"), "Database Name")
 	flag.StringVar(&o.DbPort, "DB_PORT", lookupEnv("DB_PORT"), "Database Port")
 	flag.StringVar(&o.JwtSecret, "JWT_SECRET", lookupEnv("JWT_SECRET"), "JWT Secret")
+	flag.StringVar(&o.JwtSecret, "API_KEY_SECRET", lookupEnv("API_KEY_SECRET"), "API Key Secret")
 
 	flag.StringVar(&o.EmailVerificationUrl, "EMAIL_VERIFICATION_URL", lookupEnv("EMAIL_VERIFICATION_URL"), "Email Verification URL")
 
