@@ -21,27 +21,39 @@ paths:
         '400':
           description: Bad Request
       requestBody:
-        $ref: '#/components/requestBodies/PaymentUpdate'
+        $ref: '#/components/requestBodies/PaymentUpdateDto'
 
 components:
   requestBodies:
-    PaymentUpdate:
+    PaymentUpdateDto:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Payment'
+            $ref: '#/components/schemas/PaymentUpdateDto'
   schemas:
-    Payment:
-      title: Payment
+    PaymentUpdateDto:
+      title: Payment Update DTO
       type: object
+      required:
+        - payment_id
+        - pay_address
+        - price_amount
+        - price_currency
+        - pay_amount
+        - pay_currency
+        - actually_paid
+        - payment_status
+        - created_at
+        - updated_at
       properties:
         payment_id:
           type: string
           format: uuid
         pay_address:
           type: string
-        prica_amount:
+        price_amount:
           type: number
+          format: double
         price_currency:
           type: string
           enum:
@@ -49,6 +61,7 @@ components:
             - chf
         pay_amount:
           type: number
+          format: double
         pay_currency:
           type: string
           enum:
@@ -56,6 +69,8 @@ components:
             - btc
         actually_paid:
           type: number
+          format: double
+          nullable: true
         payment_status:
           type: string
           enum:
@@ -72,37 +87,3 @@ components:
         updated_at:
           type: string
           format: date-time
-    PaymentRequest:
-      title: Payment Request
-      type: object
-      properties:
-        price_currency:
-          type: string
-          enum:
-            - usd
-            - chf
-        price_amount:
-          type: number
-        pay_currency:
-          type: string
-          enum:
-            - eth
-            - btc
-    PaymentUpdate:
-      title: te
-      type: object
-      properties:
-        payment_id:
-          type: integer
-        amount_paid:
-          type: number
-        payment_status:
-          type: string
-          enum:
-            - waiting
-            - partially_paid
-            - paid
-            - sending
-            - finished
-            - expired
-            - failed

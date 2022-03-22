@@ -29,7 +29,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Payment'
+                $ref: '#/components/schemas/PaymentResponseDto'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
       requestBody:
@@ -48,11 +48,22 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/PaymentRequest'
+            $ref: '#/components/schemas/PaymentRequestDto'
   schemas:
-    Payment:
-      title: Payment
+    PaymentResponseDto:
+      title: Payment Response DTO
       type: object
+      required:
+        - id
+        - pay_address
+        - price_currency
+        - pay_amount
+        - pay_currency
+        - actually_paid
+        - callback_url
+        - payment_status
+        - created_at
+        - updated_at
       properties:
           id:
            type: string
@@ -61,6 +72,7 @@ components:
            type: string
           price_amount:
            type: number
+           format: double
           price_currency:
            type: string
            enum:
@@ -68,6 +80,7 @@ components:
              - chf
           pay_amount:
            type: number
+           format: double
           pay_currency:
            type: string
            enum:
@@ -75,6 +88,8 @@ components:
              - btc
           actually_paid:
            type: number
+           format: double
+           nullable: true
           callback_url:
            type: string
           payment_status:
@@ -93,9 +108,14 @@ components:
           updated_at:
            type: string
            format: date-time
-    PaymentRequest:
-      title: Payment Request
+    PaymentRequestDto:
+      title: Payment Request DTO
       type: object
+      required:
+        - price_currency
+        - price_amount
+        - pay_currency
+        - callback_url
       properties:
         price_currency:
           type: string
@@ -104,6 +124,7 @@ components:
             - chf
         price_amount:
           type: number
+          format: double
         pay_currency:
           type: string
           enum:

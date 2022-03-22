@@ -21,10 +21,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // ApiKeyApiService is a service that implements the logic for the ApiKeyApiServicer

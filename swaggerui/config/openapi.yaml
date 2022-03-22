@@ -24,20 +24,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Token'
+                $ref: '#/components/schemas/TokenResponseDto'
         '403':
           description: wrong username or password
       requestBody:
-        $ref: '#/components/requestBodies/Login'
-  /logout:
-    get:
-      tags:
-        - authentication
-      summary: Logs out the user
-      operationId: logout
-      responses:
-        '200':
-          description: successful operation
+        $ref: '#/components/requestBodies/LoginRequestDto'
+
   /register:
     post:
       tags:
@@ -48,7 +40,8 @@ paths:
         '201':
           description: new user registred
       requestBody:
-        $ref: '#/components/requestBodies/Register'
+        $ref: '#/components/requestBodies/RegisterRequestDto'
+
   /verifyemail:
     get:
       tags:
@@ -61,7 +54,6 @@ paths:
           required: true
           schema:
             type: string
-        
         - in: query
           name: verification_code
           schema:
@@ -73,6 +65,7 @@ paths:
           description: successful operation
         '400':
           description: email or verification code invalid
+
   /wallet:
     get:
       tags:
@@ -89,7 +82,7 @@ paths:
            type: string
            enum:
             - test
-            - prod
+            - main
       responses:
         '200':
           description: operation successful
@@ -98,7 +91,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Wallet'
+                  $ref: '#/components/schemas/WalletResponseDto'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
     post:
@@ -114,11 +107,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Wallet'
+                $ref: '#/components/schemas/WalletResponseDto'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
       requestBody:
-        $ref: '#/components/requestBodies/Wallet'
+        $ref: '#/components/requestBodies/WalletRequestDto'
+
   /wallet/{wallet_id}:
     delete:
       tags: 
@@ -157,7 +151,7 @@ paths:
             type: string
             enum:
               - test
-              - prod
+              - main
         - in: query
           name: key_type
           required: true
@@ -178,7 +172,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiKey'
+                $ref: '#/components/schemas/ApiKeyResponseDto'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
     post:
@@ -199,11 +193,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiKey'
+                $ref: '#/components/schemas/ApiKeyResponseDto'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
       requestBody:
-        $ref: '#/components/requestBodies/ApiKeyRequest'
+        $ref: '#/components/requestBodies/ApiKeyRequestDto'
+
   /apiKey/{api_key_id}:
     delete:
       tags:
@@ -243,7 +238,7 @@ paths:
             type: string
             enum:
               - test
-              - prod
+              - main
         - in: header
           name: authorization
           schema:
@@ -258,7 +253,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Logging'
+                  $ref: '#/components/schemas/LoggingResponseDto'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 components:
@@ -271,29 +266,29 @@ components:
     UnauthorizedError:
       description: Access token is missing or invalid
   requestBodies:
-    Login:
+    LoginRequestDto:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Login'
-    Register:
+            $ref: '#/components/schemas/LoginRequestDto'
+    RegisterRequestDto:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Register'
-    Wallet:
+            $ref: '#/components/schemas/RegisterRequestDto'
+    WalletRequestDto:
       content:
         application/json:
           schema: 
-            $ref: '#/components/schemas/WalletRequest'
-    ApiKeyRequest:
+            $ref: '#/components/schemas/WalletRequestDto'
+    ApiKeyRequestDto:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiKeyRequest'
+            $ref: '#/components/schemas/ApiKeyRequestDto'
   schemas:
-    Login:
-      title: Login
+    LoginRequestDto:
+      title: Login Request DTO
       type: object
       required:
         - email
@@ -305,15 +300,17 @@ components:
         password:
           type: string
           example: my-secret-password
-    Token:
-      title: Token
+    TokenResponseDto:
+      title: Token Response DTO
       type: object
+      required:
+        - token
       properties:
         token:
           type: string
           example: example-jwt-token
-    Register:
-      title: Register
+    RegisterRequestDto:
+      title: Register Request DTO
       type: object
       required: 
         - first_name
@@ -329,9 +326,14 @@ components:
           type: string
         password:
           type: string
-    Wallet:
-      title: Wallet
+    WalletResponseDto:
+      title: Wallet Response DTO
       type: object
+      required:
+        - id
+        - currency
+        - address
+        - mode
       properties:
         id:
           type: string
@@ -347,9 +349,9 @@ components:
           type: string
           enum:
             - test
-            - prod
-    WalletRequest:
-      title: Wallet
+            - main
+    WalletRequestDto:
+      title: Wallet Request DTO
       type: object
       required:
         - currency
@@ -367,10 +369,15 @@ components:
           type: string
           enum:
             - test
-            - prod
-    ApiKey:
-      title: Api Key
+            - main
+    ApiKeyResponseDto:
+      title: Api Key Response DTO
       type: object
+      required:
+        - id
+        - key
+        - key_type
+        - created_at
       properties:
         id:
           type: string
@@ -385,9 +392,12 @@ components:
         created_at:
           type: string
           format: date-time
-    ApiKeyRequest:
-      title: Api Key Request
+    ApiKeyRequestDto:
+      title: Api Key Request Dto
       type: object
+      required:
+        - mode
+        - key_type
       properties:
         mode:
           type: string
@@ -399,8 +409,8 @@ components:
           enum:
             - secret
             - public
-    Logging:
-      title: Logging Informations
+    LoggingResponseDto:
+      title: Logging Informations Response DTO
       type: object
       properties:
         payment_id:
@@ -429,6 +439,7 @@ components:
           type: string
         price_amount:
           type: number
+          format: double
         price_currency:
           type: string
           enum:
@@ -436,6 +447,7 @@ components:
             - chf
         pay_amount:
           type: number
+          format: double
         pay_currency:
           type: string
           enum:
@@ -443,6 +455,8 @@ components:
             - btc
         actually_paid:
           type: number
+          format: double
+          nullable: true
         payment_status:
           type: string
           enum:
