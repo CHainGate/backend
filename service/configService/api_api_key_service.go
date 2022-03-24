@@ -54,18 +54,18 @@ func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context, apiKeyId string, au
 }
 
 // GenerateApiKey - create new secret api key
-func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization string, apiKeyRequest configApi.ApiKeyRequest) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
 	user, err := checkAuthorizationAndReturnUser(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	mode, ok := utils.ParseStringToModeEnum(apiKeyRequest.Mode)
+	mode, ok := utils.ParseStringToModeEnum(apiKeyRequestDto.Mode)
 	if !ok {
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
 	}
 
-	apiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(apiKeyRequest.KeyType)
+	apiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(apiKeyRequestDto.KeyType)
 	if !ok {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
 	}

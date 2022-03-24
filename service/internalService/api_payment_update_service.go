@@ -34,7 +34,7 @@ func NewPaymentUpdateApiService() internalApi.PaymentUpdateApiServicer {
 }
 
 // UpdatePayment - update payment
-func (s *PaymentUpdateApiService) UpdatePayment(_ context.Context, payment internalApi.Payment) (internalApi.ImplResponse, error) {
+func (s *PaymentUpdateApiService) UpdatePayment(_ context.Context, payment internalApi.PaymentUpdateDto) (internalApi.ImplResponse, error) {
 	// save to db
 	/*	var currentPayment models.Payment
 		database.DB.Where("id = ?", payment.PaymentId).Find(&currentPayment)
@@ -65,11 +65,11 @@ func (s *PaymentUpdateApiService) UpdatePayment(_ context.Context, payment inter
 		Data: proxyClientApi.WebHookData{
 			PaymentId:     payment.PaymentId,
 			PayAddress:    payment.PayAddress,
-			PriceAmount:   payment.PricaAmount,
+			PriceAmount:   payment.PriceAmount,
 			PriceCurrency: payment.PriceCurrency,
 			PayAmount:     payment.PayAmount,
 			PayCurrency:   payment.PayCurrency,
-			ActuallyPaid:  *proxyClientApi.NewNullableFloat32(&payment.ActuallyPaid),
+			ActuallyPaid:  *proxyClientApi.NewNullableFloat64(payment.ActuallyPaid),
 			PaymentStatus: payment.PaymentStatus,
 			CreatedAt:     payment.CreatedAt,
 			UpdatedAt:     payment.UpdatedAt,
@@ -85,10 +85,10 @@ func (s *PaymentUpdateApiService) UpdatePayment(_ context.Context, payment inter
 	expectedMAC := mac.Sum(nil)
 	body.Signature = hex.EncodeToString(expectedMAC)
 
-	webhook := *proxyClientApi.NewWebHook("http://localhost:5000/webhook", body)
+	webhook := *proxyClientApi.NewWebHookRequestDto("http://localhost:5000/webhook", body)
 	configuration := proxyClientApi.NewConfiguration()
 	apiClient := proxyClientApi.NewAPIClient(configuration)
-	_, err = apiClient.WebhookApi.SendWebhook(context.Background()).WebHook(webhook).Execute()
+	_, err = apiClient.WebhookApi.SendWebhook(context.Background()).WebHookRequestDto(webhook).Execute()
 	if err != nil {
 		fmt.Println(err)
 	}

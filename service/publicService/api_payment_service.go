@@ -35,7 +35,7 @@ func NewPaymentApiService() publicApi.PaymentApiServicer {
 }
 
 // NewPayment - Create a new payment
-func (s *PaymentApiService) NewPayment(ctx context.Context, xAPIKEY string, paymentRequest publicApi.PaymentRequest) (publicApi.ImplResponse, error) {
+func (s *PaymentApiService) NewPayment(ctx context.Context, xAPIKEY string, paymentRequestDto publicApi.PaymentRequestDto) (publicApi.ImplResponse, error) {
 	mac := hmac.New(sha512.New, []byte(utils.Opts.ApiKeySecret))
 	_, err := io.WriteString(mac, xAPIKEY)
 	if err != nil {

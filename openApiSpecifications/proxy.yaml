@@ -23,7 +23,7 @@ paths:
         '400':
           description: bad request
       requestBody:
-        $ref: '#/components/requestBodies/Email'
+        $ref: '#/components/requestBodies/EmailRequestDto'
 
   /exchangeRate:
     get:
@@ -49,7 +49,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExchangeRate'
+                $ref: '#/components/schemas/ExchangeRateResponseDto'
         '400':
           description: bad request
 
@@ -65,23 +65,23 @@ paths:
         '400':
           description: bad request
       requestBody:
-        $ref: '#/components/requestBodies/WebHook'
+        $ref: '#/components/requestBodies/WebHookRequestDto'
 
 components:
   requestBodies:
-    Email:
+    EmailRequestDto:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Email'
-    WebHook:
+            $ref: '#/components/schemas/EmailRequestDto'
+    WebHookRequestDto:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/WebHook'
+            $ref: '#/components/schemas/WebHookRequestDto'
   schemas:
-    Email:
-      title: Email
+    EmailRequestDto:
+      title: Email Request DTO
       type: object
       required:
         - name
@@ -97,14 +97,15 @@ components:
           type: string
         content:
           type: string
-    ExchangeRate:
-      title: Exchange Rate
+    ExchangeRateResponseDto:
+      title: Exchange Rate Response DTO
       type: object
       properties:
         exchange_rate:
           type: number
-    WebHook:
-      title: WebHook
+          format: double
+    WebHookRequestDto:
+      title: WebHook Request Dto
       type: object
       required:
         - url
@@ -147,6 +148,7 @@ components:
           type: string
         price_amount:
           type: number
+          format: double
         price_currency:
           type: string
           enum:
@@ -154,6 +156,7 @@ components:
             - chf
         pay_amount:
           type: number
+          format: double
         pay_currency:
           type: string
           enum:
@@ -161,6 +164,7 @@ components:
             - btc
         actually_paid:
           type: number
+          format: double
           nullable: true
         payment_status:
           type: string
