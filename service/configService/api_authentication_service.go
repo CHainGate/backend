@@ -62,7 +62,7 @@ func (s *AuthenticationApiService) Login(ctx context.Context, loginRequestDto co
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Token signing failed ")
 	}
-	tokenDto := configApi.Token{Token: token}
+	tokenDto := configApi.TokenResponseDto{Token: token}
 
 	return configApi.Response(http.StatusCreated, tokenDto), nil
 }

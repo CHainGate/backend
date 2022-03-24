@@ -107,7 +107,7 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
 	}
 
-	apiKeyDto := configApi.ApiKey{
+	apiKeyDto := configApi.ApiKeyResponseDto{
 		Id:        key.Id.String(),
 		KeyType:   key.KeyType,
 		CreatedAt: key.CreatedAt,
@@ -144,9 +144,9 @@ func (s *ApiKeyApiService) GetApiKey(ctx context.Context, mode string, keyType s
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("")
 	}
 
-	var resultList []configApi.ApiKey
+	var resultList []configApi.ApiKeyResponseDto
 	for _, item := range keys {
-		resultList = append(resultList, configApi.ApiKey{
+		resultList = append(resultList, configApi.ApiKeyResponseDto{
 			Id:        item.Id.String(),
 			Key:       item.Key,
 			KeyType:   item.KeyType,
