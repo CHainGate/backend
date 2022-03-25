@@ -1,10 +1,10 @@
 package configService
 
 import (
-	"CHainGate/backend/database"
-	"CHainGate/backend/models"
-	"CHainGate/backend/utils"
 	"errors"
+	"github.com/CHainGate/backend/internal/database"
+	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/utils"
 	"strings"
 	"time"
 

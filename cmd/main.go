@@ -1,14 +1,13 @@
 package main
 
 import (
-	"CHainGate/backend/configApi"
-	"CHainGate/backend/database"
-	"CHainGate/backend/internalApi"
-	"CHainGate/backend/publicApi"
-	"CHainGate/backend/service/configService"
-	"CHainGate/backend/service/internalService"
-	"CHainGate/backend/service/publicService"
-	"CHainGate/backend/utils"
+	"github.com/CHainGate/backend/configApi"
+	"github.com/CHainGate/backend/internal/service/configService"
+	"github.com/CHainGate/backend/internal/service/internalService"
+	"github.com/CHainGate/backend/internal/service/publicService"
+	"github.com/CHainGate/backend/internal/utils"
+	"github.com/CHainGate/backend/internalApi"
+	"github.com/CHainGate/backend/publicApi"
 	"log"
 	"net/http"
 	"strconv"
@@ -18,7 +17,7 @@ import (
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
-	database.Connect()
+	//database.Connect()
 
 	// config api
 	ApiKeyApiService := configService.NewApiKeyApiService()

@@ -10,9 +10,9 @@
 package configService
 
 import (
-	"CHainGate/backend/configApi"
 	"context"
 	"errors"
+	"github.com/CHainGate/backend/configApi"
 	"net/http"
 )
 

@@ -10,10 +10,6 @@
 package configService
 
 import (
-	"CHainGate/backend/configApi"
-	"CHainGate/backend/database"
-	"CHainGate/backend/models"
-	"CHainGate/backend/utils"
 	"context"
 	"crypto/hmac"
 	"crypto/rand"
@@ -21,6 +17,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"github.com/CHainGate/backend/configApi"
+	"github.com/CHainGate/backend/internal/database"
+	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/utils"
 	"io"
 	"net/http"
 	"time"

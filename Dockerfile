@@ -9,15 +9,10 @@ COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 
-COPY *.go ./
-COPY controller/*.go ./controller/
-COPY database/*.go ./database/
-COPY models/*.go ./models/
-COPY openApiSpecifications/* ./openApiSpecifications/
-COPY routes/*.go ./routes/
-COPY service/ ./service/
+COPY cmd/*.go ./cmd/
+COPY internal/ ./internal/
+COPY openApiSpecifications/ ./openApiSpecifications/
 COPY swaggerui/ ./swaggerui/
-COPY utils/*.go ./utils/
 COPY wait-for-it.sh ./
 COPY .openapi-generator-ignore ./
 
@@ -34,7 +29,7 @@ RUN goimports -w .
 
 RUN ["chmod", "+x", "wait-for-it.sh"]
 
-RUN go build -o /backend-service
+RUN go build -o /backend-service ./cmd/main.go
 
 EXPOSE 8000
 

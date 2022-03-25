@@ -1,4 +1,4 @@
-module CHainGate/backend
+module github.com/CHainGate/backend
 
 go 1.17
 

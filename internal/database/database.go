@@ -1,9 +1,9 @@
 package database
 
 import (
-	"CHainGate/backend/models"
-	"CHainGate/backend/utils"
 	"fmt"
+	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/utils"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

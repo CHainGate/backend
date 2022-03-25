@@ -10,15 +10,15 @@
 package publicService
 
 import (
-	"CHainGate/backend/database"
-	"CHainGate/backend/models"
-	"CHainGate/backend/publicApi"
-	"CHainGate/backend/utils"
 	"context"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
+	"github.com/CHainGate/backend/internal/database"
+	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/utils"
+	"github.com/CHainGate/backend/publicApi"
 	"io"
 	"net/http"
 )
