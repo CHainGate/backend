@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/CHainGate/backend/configApi"
+	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/service/configService"
 	"github.com/CHainGate/backend/internal/service/internalService"
 	"github.com/CHainGate/backend/internal/service/publicService"
@@ -17,7 +18,7 @@ import (
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
-	//database.Connect()
+	database.Connect()
 
 	// config api
 	ApiKeyApiService := configService.NewApiKeyApiService()
