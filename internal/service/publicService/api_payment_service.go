@@ -11,16 +11,14 @@ package publicService
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/publicApi"
-	"io"
 	"net/http"
+	"strings"
 )
 
 // PaymentApiService is a service that implements the logic for the PaymentApiServicer
@@ -35,18 +33,14 @@ func NewPaymentApiService() publicApi.PaymentApiServicer {
 }
 
 // NewPayment - Create a new payment
-func (s *PaymentApiService) NewPayment(ctx context.Context, xAPIKEY string, paymentRequestDto publicApi.PaymentRequestDto) (publicApi.ImplResponse, error) {
-	mac := hmac.New(sha512.New, []byte(utils.Opts.ApiKeySecret))
-	_, err := io.WriteString(mac, xAPIKEY)
+func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymentRequestDto publicApi.PaymentRequestDto) (publicApi.ImplResponse, error) {
+	// only user data without preload, if needed add preload
+	user, err := verifyApiKeyAuthentication(xAPIKEY)
 	if err != nil {
-
-	}
-	hashedKey := mac.Sum(nil)
-
-	var key models.ApiKey
-	result := database.DB.Where("encrypted_key = ?", hex.EncodeToString(hashedKey)).Find(&key)
-	if result.RowsAffected == 0 {
-		return publicApi.Response(http.StatusForbidden, nil), errors.New("no authorization")
+		if err.Error() == "not authorized" {
+			return publicApi.Response(http.StatusForbidden, nil), err
+		}
+		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	// TODO: create blockchain call
@@ -55,5 +49,52 @@ func (s *PaymentApiService) NewPayment(ctx context.Context, xAPIKEY string, paym
 
 	// TODO: map data to dto object
 
-	return publicApi.Response(http.StatusNotImplemented, key), nil
+	return publicApi.Response(http.StatusNotImplemented, user), nil
+}
+
+func verifyApiKeyAuthentication(receivedApiKey string) (*models.User, error) {
+	decryptedApiKey, err := utils.Decrypt([]byte(utils.Opts.ApiKeySecret), receivedApiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKeyDetails := strings.Split(decryptedApiKey, "_")
+	apiKeyId := apiKeyDetails[0]
+	apiKeySecret := apiKeyDetails[1]
+
+	var databaseApiKey models.ApiKey
+	result := database.DB.Where("id = ?", apiKeyId).Find(&databaseApiKey)
+	if result.Error != nil {
+		return nil, err
+	}
+	fmt.Println(databaseApiKey.Mode)
+	apiKeyMode, ok := utils.ParseStringToApiKeyTypeEnum(databaseApiKey.KeyType)
+	if !ok {
+		return nil, errors.New("Wrong api key mode ")
+	}
+
+	if apiKeyMode == utils.Secret {
+		encryptedKey, err := utils.ScryptApiKey(apiKeySecret, databaseApiKey.Salt)
+		if err != nil {
+			return nil, err
+		}
+
+		if encryptedKey != databaseApiKey.SecretKey {
+			return nil, errors.New("not authorized")
+		}
+	}
+
+	if apiKeyMode == utils.Public {
+		if apiKeySecret != databaseApiKey.SecretKey {
+			return nil, errors.New("not authorized")
+		}
+	}
+
+	var user models.User
+	result = database.DB.Where("id = ?", databaseApiKey.UserId).Find(&user)
+	if result.Error != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }

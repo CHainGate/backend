@@ -11,17 +11,11 @@ package configService
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha512"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
-	"io"
 	"net/http"
 	"time"
 
@@ -40,7 +34,7 @@ func NewApiKeyApiService() configApi.ApiKeyApiServicer {
 }
 
 // DeleteApiKey - delete api key
-func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
 	user, err := checkAuthorizationAndReturnUser(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
@@ -54,7 +48,7 @@ func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context, apiKeyId string, au
 }
 
 // GenerateApiKey - create new secret api key
-func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
 	user, err := checkAuthorizationAndReturnUser(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
@@ -78,27 +72,52 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 		CreatedAt: time.Now(),
 	}
 
-	// generate random api key
-	randomBytes := make([]byte, 64)
-	_, err = rand.Read(randomBytes)
-	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Key generation failed ")
+	apiKeyDto := configApi.ApiKeyResponseDto{
+		Id:        key.Id.String(),
+		KeyType:   key.KeyType,
+		CreatedAt: key.CreatedAt,
 	}
-	clearTextApiKey := base64.StdEncoding.EncodeToString(randomBytes)
+
+	apiSecretKey, err := utils.GenerateApiKey()
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), err
+	}
 
 	if apiKeyType == utils.Secret {
-		apiKeyBeginning := clearTextApiKey[0:4]
-		apiKeyEnding := clearTextApiKey[len(clearTextApiKey)-5:]
-		mac := hmac.New(sha512.New, []byte(utils.Opts.ApiKeySecret))
-		_, err := io.WriteString(mac, clearTextApiKey)
+		salt, err := utils.CreateSalt()
 		if err != nil {
-			return configApi.Response(http.StatusInternalServerError, nil), errors.New("Key generation failed ")
+			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
-		hashedKey := mac.Sum(nil)
-		key.HashedKey = hex.EncodeToString(hashedKey)
-		key.Key = apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
-	} else {
-		key.Key = clearTextApiKey
+		apiSecureKeyEncrypted, err := utils.ScryptApiKey(apiSecretKey, salt)
+		if err != nil {
+			return configApi.Response(http.StatusInternalServerError, nil), err
+		}
+		key.SecretKey = apiSecureKeyEncrypted
+		key.Salt = salt
+
+		combinedKey := key.Id.String() + "_" + apiSecretKey
+		encryptAES, err := utils.Encrypt([]byte(utils.Opts.ApiKeySecret), combinedKey)
+		if err != nil {
+			return configApi.Response(http.StatusInternalServerError, nil), err
+		}
+
+		apiKeyBeginning := encryptAES[0:4]
+		apiKeyEnding := encryptAES[len(encryptAES)-5:]
+		key.ApiKey = apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
+
+		apiKeyDto.Key = encryptAES
+	}
+
+	if apiKeyType == utils.Public {
+		combinedKey := key.Id.String() + "_" + apiSecretKey
+		encryptAES, err := utils.Encrypt([]byte(utils.Opts.ApiKeySecret), combinedKey)
+		if err != nil {
+			return configApi.Response(http.StatusInternalServerError, nil), err
+		}
+		key.ApiKey = encryptAES
+		key.SecretKey = apiSecretKey
+
+		apiKeyDto.Key = encryptAES
 	}
 
 	user.ApiKeys = append(user.ApiKeys, key)
@@ -107,22 +126,11 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
 	}
 
-	apiKeyDto := configApi.ApiKeyResponseDto{
-		Id:        key.Id.String(),
-		KeyType:   key.KeyType,
-		CreatedAt: key.CreatedAt,
-	}
-
-	if apiKeyType == utils.Secret {
-		apiKeyDto.Key = clearTextApiKey
-	} else {
-		apiKeyDto.Key = key.Key
-	}
 	return configApi.Response(http.StatusCreated, apiKeyDto), nil
 }
 
 // GetApiKey - gets the api key
-func (s *ApiKeyApiService) GetApiKey(ctx context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
 	user, err := checkAuthorizationAndReturnUser(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
@@ -148,7 +156,7 @@ func (s *ApiKeyApiService) GetApiKey(ctx context.Context, mode string, keyType s
 	for _, item := range keys {
 		resultList = append(resultList, configApi.ApiKeyResponseDto{
 			Id:        item.Id.String(),
-			Key:       item.Key,
+			Key:       item.ApiKey,
 			KeyType:   item.KeyType,
 			CreatedAt: item.CreatedAt,
 		})
