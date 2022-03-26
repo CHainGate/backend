@@ -49,8 +49,6 @@ components:
         payment_id:
           type: string
           format: uuid
-        pay_address:
-          type: string
         price_amount:
           type: number
           format: double
@@ -81,9 +79,3 @@ components:
             - finished
             - expired
             - failed
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
