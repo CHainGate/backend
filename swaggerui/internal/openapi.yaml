@@ -36,29 +36,14 @@ components:
       type: object
       required:
         - payment_id
-        - pay_address
-        - price_amount
-        - price_currency
         - pay_amount
         - pay_currency
         - actually_paid
         - payment_status
-        - created_at
-        - updated_at
       properties:
         payment_id:
           type: string
           format: uuid
-        pay_address:
-          type: string
-        price_amount:
-          type: number
-          format: double
-        price_currency:
-          type: string
-          enum:
-            - usd
-            - chf
         pay_amount:
           type: number
           format: double
@@ -81,9 +66,3 @@ components:
             - finished
             - expired
             - failed
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
