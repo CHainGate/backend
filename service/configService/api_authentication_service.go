@@ -40,15 +40,15 @@ func NewAuthenticationApiService() configApi.AuthenticationApiServicer {
 }
 
 // Login - Authenticate to chaingate
-func (s *AuthenticationApiService) Login(ctx context.Context, login configApi.Login) (configApi.ImplResponse, error) {
+func (s *AuthenticationApiService) Login(ctx context.Context, loginRequestDto configApi.LoginRequestDto) (configApi.ImplResponse, error) {
 	var user models.User
-	result := database.DB.Where("email = ?", login.Email).First(&user)
+	result := database.DB.Where("email = ?", loginRequestDto.Email).First(&user)
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("User or password wrong ")
 	}
 
-	err := bcrypt.CompareHashAndPassword(user.Password, []byte(login.Password))
+	err := bcrypt.CompareHashAndPassword(user.Password, []byte(loginRequestDto.Password))
 	if err != nil || !user.IsActive {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("User or password wrong ")
 	}
@@ -62,7 +62,7 @@ func (s *AuthenticationApiService) Login(ctx context.Context, login configApi.Lo
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Token signing failed ")
 	}
-	tokenDto := configApi.Token{Token: token}
+	tokenDto := configApi.TokenResponseDto{Token: token}
 
 	return configApi.Response(http.StatusCreated, tokenDto), nil
 }
@@ -79,9 +79,9 @@ func (s *AuthenticationApiService) Logout(ctx context.Context) (configApi.ImplRe
 }
 
 // RegisterUser - User registration
-func (s *AuthenticationApiService) RegisterUser(ctx context.Context, register configApi.Register) (configApi.ImplResponse, error) {
+func (s *AuthenticationApiService) RegisterUser(ctx context.Context, registerRequestDto configApi.RegisterRequestDto) (configApi.ImplResponse, error) {
 	//TODO: maybe use password validator https://github.com/wagslane/go-password-validator
-	password, err := bcrypt.GenerateFromPassword([]byte(register.Password), bcrypt.DefaultCost)
+	password, err := bcrypt.GenerateFromPassword([]byte(registerRequestDto.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
 	}
@@ -102,9 +102,9 @@ func (s *AuthenticationApiService) RegisterUser(ctx context.Context, register co
 	}
 
 	user := models.User{
-		FirstName:         register.FirstName,
-		LastName:          register.LastName,
-		Email:             register.Email,
+		FirstName:         registerRequestDto.FirstName,
+		LastName:          registerRequestDto.LastName,
+		Email:             registerRequestDto.Email,
 		Password:          password,
 		EmailVerification: emailVerification,
 		IsActive:          false,
@@ -123,10 +123,10 @@ func (s *AuthenticationApiService) RegisterUser(ctx context.Context, register co
 	// send email
 	url := utils.Opts.EmailVerificationUrl + "?email=" + user.Email + "&code=" + strconv.FormatUint(user.EmailVerification.VerificationCode, 10)
 	content := "Please Verify your E-Mail: " + url
-	email := *proxyClientApi.NewEmail(user.FirstName, user.Email, "Verify your E-Mail", content)
+	email := *proxyClientApi.NewEmailRequestDto(user.FirstName, user.Email, "Verify your E-Mail", content)
 	configuration := proxyClientApi.NewConfiguration()
 	apiClient := proxyClientApi.NewAPIClient(configuration)
-	_, err = apiClient.EmailApi.SendEmail(context.Background()).Email(email).Execute()
+	_, err = apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Verification E-Mail could not be sent ")
 	}

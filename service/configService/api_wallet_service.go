@@ -28,7 +28,7 @@ func NewWalletApiService() configApi.WalletApiServicer {
 }
 
 // AddWallet - add new wallet address
-func (s *WalletApiService) AddWallet(ctx context.Context, walletRequest configApi.WalletRequest) (configApi.ImplResponse, error) {
+func (s *WalletApiService) AddWallet(ctx context.Context, walletRequestDto configApi.WalletRequestDto) (configApi.ImplResponse, error) {
 	// TODO - update AddWallet with the required logic for this service method.
 	// Add api_wallet_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 

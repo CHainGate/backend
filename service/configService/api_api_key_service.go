@@ -21,10 +21,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // ApiKeyApiService is a service that implements the logic for the ApiKeyApiServicer
@@ -53,18 +54,18 @@ func (s *ApiKeyApiService) DeleteApiKey(ctx context.Context, apiKeyId string, au
 }
 
 // GenerateApiKey - create new secret api key
-func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization string, apiKeyRequest configApi.ApiKeyRequest) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
 	user, err := checkAuthorizationAndReturnUser(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	mode, ok := utils.ParseStringToModeEnum(apiKeyRequest.Mode)
+	mode, ok := utils.ParseStringToModeEnum(apiKeyRequestDto.Mode)
 	if !ok {
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
 	}
 
-	apiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(apiKeyRequest.KeyType)
+	apiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(apiKeyRequestDto.KeyType)
 	if !ok {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
 	}
@@ -106,7 +107,7 @@ func (s *ApiKeyApiService) GenerateApiKey(ctx context.Context, authorization str
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
 	}
 
-	apiKeyDto := configApi.ApiKey{
+	apiKeyDto := configApi.ApiKeyResponseDto{
 		Id:        key.Id.String(),
 		KeyType:   key.KeyType,
 		CreatedAt: key.CreatedAt,
@@ -143,9 +144,9 @@ func (s *ApiKeyApiService) GetApiKey(ctx context.Context, mode string, keyType s
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("")
 	}
 
-	var resultList []configApi.ApiKey
+	var resultList []configApi.ApiKeyResponseDto
 	for _, item := range keys {
-		resultList = append(resultList, configApi.ApiKey{
+		resultList = append(resultList, configApi.ApiKeyResponseDto{
 			Id:        item.Id.String(),
 			Key:       item.Key,
 			KeyType:   item.KeyType,

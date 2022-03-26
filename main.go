@@ -2,6 +2,7 @@ package main
 
 import (
 	"CHainGate/backend/configApi"
+	"CHainGate/backend/database"
 	"CHainGate/backend/internalApi"
 	"CHainGate/backend/publicApi"
 	"CHainGate/backend/service/configService"
