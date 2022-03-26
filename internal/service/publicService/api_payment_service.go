@@ -12,7 +12,6 @@ package publicService
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
@@ -67,7 +66,7 @@ func verifyApiKeyAuthentication(receivedApiKey string) (*models.User, error) {
 	if result.Error != nil {
 		return nil, err
 	}
-	fmt.Println(databaseApiKey.Mode)
+
 	apiKeyMode, ok := utils.ParseStringToApiKeyTypeEnum(databaseApiKey.KeyType)
 	if !ok {
 		return nil, errors.New("Wrong api key mode ")
