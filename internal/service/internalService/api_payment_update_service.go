@@ -16,10 +16,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/CHainGate/backend/internalApi"
-	"github.com/CHainGate/backend/proxyClientApi"
 	"io"
 	"net/http"
+
+	"github.com/CHainGate/backend/internalApi"
+	"github.com/CHainGate/backend/proxyClientApi"
 )
 
 // PaymentUpdateApiService is a service that implements the logic for the PaymentUpdateApiServicer
@@ -63,16 +64,16 @@ func (s *PaymentUpdateApiService) UpdatePayment(_ context.Context, payment inter
 	// webhookcall
 	body := proxyClientApi.WebHookBody{
 		Data: proxyClientApi.WebHookData{
-			PaymentId:     payment.PaymentId,
-			PayAddress:    payment.PayAddress,
-			PriceAmount:   payment.PriceAmount,
-			PriceCurrency: payment.PriceCurrency,
+			PaymentId: payment.PaymentId,
+			//PayAddress:    payment.PayAddress,
+			//PriceAmount:   payment.PriceAmount,
+			//PriceCurrency: payment.PriceCurrency,
 			PayAmount:     payment.PayAmount,
 			PayCurrency:   payment.PayCurrency,
 			ActuallyPaid:  *proxyClientApi.NewNullableFloat64(payment.ActuallyPaid),
 			PaymentStatus: payment.PaymentStatus,
-			CreatedAt:     payment.CreatedAt,
-			UpdatedAt:     payment.UpdatedAt,
+			//CreatedAt:     payment.CreatedAt,
+			//UpdatedAt:     payment.UpdatedAt,
 		},
 	}
 

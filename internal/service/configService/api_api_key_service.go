@@ -12,12 +12,13 @@ package configService
 import (
 	"context"
 	"errors"
+	"net/http"
+	"time"
+
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
-	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 )

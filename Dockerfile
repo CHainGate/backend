@@ -11,7 +11,6 @@ RUN go mod download
 
 COPY cmd/*.go ./cmd/
 COPY internal/ ./internal/
-COPY openApiSpecifications/ ./openApiSpecifications/
 COPY swaggerui/ ./swaggerui/
 COPY wait-for-it.sh ./
 COPY .openapi-generator-ignore ./
@@ -23,7 +22,7 @@ RUN npm install @openapitools/openapi-generator-cli -g
 RUN npx @openapitools/openapi-generator-cli generate -i ./swaggerui/config/openapi.yaml -g go-server -o ./ --additional-properties=sourceFolder=configApi,packageName=configApi
 RUN npx @openapitools/openapi-generator-cli generate -i ./swaggerui/public/openapi.yaml -g go-server -o ./ --additional-properties=sourceFolder=publicApi,packageName=publicApi
 RUN npx @openapitools/openapi-generator-cli generate -i ./swaggerui/internal/openapi.yaml -g go-server -o ./ --additional-properties=sourceFolder=internalApi,packageName=internalApi
-RUN npx @openapitools/openapi-generator-cli generate -i ./openApiSpecifications/proxy.yaml -g go -o ./proxyClientApi --ignore-file-override=.openapi-generator-ignore --additional-properties=sourceFolder=proxyClientApi,packageName=proxyClientApi
+RUN npx @openapitools/openapi-generator-cli generate -i https://raw.githubusercontent.com/CHainGate/proxy-service/main/swaggerui/openapi.yaml -g go -o ./proxyClientApi --ignore-file-override=.openapi-generator-ignore --additional-properties=sourceFolder=proxyClientApi,packageName=proxyClientApi
 RUN go install golang.org/x/tools/cmd/goimports@latest
 RUN goimports -w .
 

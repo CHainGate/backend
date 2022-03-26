@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
 

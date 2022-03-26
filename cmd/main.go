@@ -1,6 +1,10 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	"strconv"
+
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/service/configService"
@@ -9,9 +13,6 @@ import (
 	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/internalApi"
 	"github.com/CHainGate/backend/publicApi"
-	"log"
-	"net/http"
-	"strconv"
 
 	"github.com/rs/cors"
 )

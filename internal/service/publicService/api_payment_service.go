@@ -12,12 +12,13 @@ package publicService
 import (
 	"context"
 	"errors"
+	"net/http"
+	"strings"
+
 	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/publicApi"
-	"net/http"
-	"strings"
 )
 
 // PaymentApiService is a service that implements the logic for the PaymentApiServicer
