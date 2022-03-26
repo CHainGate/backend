@@ -2,11 +2,12 @@ package configService
 
 import (
 	"errors"
+	"strings"
+	"time"
+
 	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
-	"strings"
-	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 )

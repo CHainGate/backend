@@ -40,7 +40,7 @@ func NewOpts() {
 	flag.StringVar(&o.DbName, "DB_NAME", lookupEnv("DB_NAME"), "Database Name")
 	flag.StringVar(&o.DbPort, "DB_PORT", lookupEnv("DB_PORT"), "Database Port")
 	flag.StringVar(&o.JwtSecret, "JWT_SECRET", lookupEnv("JWT_SECRET"), "JWT Secret")
-	flag.StringVar(&o.JwtSecret, "API_KEY_SECRET", lookupEnv("API_KEY_SECRET"), "API Key Secret")
+	flag.StringVar(&o.ApiKeySecret, "API_KEY_SECRET", lookupEnv("API_KEY_SECRET"), "API Key Secret")
 
 	flag.StringVar(&o.EmailVerificationUrl, "EMAIL_VERIFICATION_URL", lookupEnv("EMAIL_VERIFICATION_URL"), "Email Verification URL")
 

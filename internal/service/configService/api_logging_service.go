@@ -12,8 +12,9 @@ package configService
 import (
 	"context"
 	"errors"
-	"github.com/CHainGate/backend/configApi"
 	"net/http"
+
+	"github.com/CHainGate/backend/configApi"
 )
 
 // LoggingApiService is a service that implements the logic for the LoggingApiServicer
