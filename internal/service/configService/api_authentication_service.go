@@ -10,14 +10,14 @@
 package configService
 
 import (
-	"CHainGate/backend/configApi"
-	"CHainGate/backend/database"
-	"CHainGate/backend/models"
-	"CHainGate/backend/proxyClientApi"
-	"CHainGate/backend/utils"
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/CHainGate/backend/configApi"
+	"github.com/CHainGate/backend/internal/database"
+	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/utils"
+	"github.com/CHainGate/backend/proxyClientApi"
 	"math/big"
 	"net/http"
 	"strconv"

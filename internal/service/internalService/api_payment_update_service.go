@@ -10,14 +10,14 @@
 package internalService
 
 import (
-	"CHainGate/backend/internalApi"
-	"CHainGate/backend/proxyClientApi"
 	"context"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/CHainGate/backend/internalApi"
+	"github.com/CHainGate/backend/proxyClientApi"
 	"io"
 	"net/http"
 )
