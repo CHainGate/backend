@@ -89,7 +89,7 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
-		apiSecureKeyEncrypted, err := utils.ScryptApiKey(apiSecretKey, salt)
+		apiSecureKeyEncrypted, err := utils.ScryptPassword(apiSecretKey, salt)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}

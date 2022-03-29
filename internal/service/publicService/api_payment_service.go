@@ -74,7 +74,7 @@ func verifyApiKeyAuthentication(receivedApiKey string) (*models.User, error) {
 	}
 
 	if apiKeyMode == utils.Secret {
-		encryptedKey, err := utils.ScryptApiKey(apiKeySecret, databaseApiKey.Salt)
+		encryptedKey, err := utils.ScryptPassword(apiKeySecret, databaseApiKey.Salt)
 		if err != nil {
 			return nil, err
 		}

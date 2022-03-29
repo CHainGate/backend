@@ -71,8 +71,8 @@ func Decrypt(key []byte, secureMessage string) (string, error) {
 	return decodedMessage, nil
 }
 
-func ScryptApiKey(clearTextApiKey string, salt []byte) (string, error) {
-	encryptedKey, err := scrypt.Key([]byte(clearTextApiKey), salt, 32768, 8, 1, 32)
+func ScryptPassword(password string, salt []byte) (string, error) {
+	encryptedKey, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 32)
 	if err != nil {
 		return "", err
 	}
