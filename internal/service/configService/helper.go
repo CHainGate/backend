@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/google/uuid"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -152,4 +153,67 @@ func handleVerification(user *models.User, verificationCode int64, repo userRepo
 		return nil
 	}
 	return errors.New("Wrong verification code ")
+}
+
+func handleSecretApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.ApiKeyType) (*models.ApiKey, error) {
+	key := models.ApiKey{
+		Id:        uuid.New(),
+		Mode:      mode.String(),
+		KeyType:   apiKeyType.String(),
+		IsActive:  true,
+		CreatedAt: time.Now(),
+	}
+
+	salt, err := utils.CreateSalt()
+	if err != nil {
+		return nil, err
+	}
+
+	apiSecureKeyEncrypted, err := utils.ScryptPassword(apiSecretKey, salt)
+	if err != nil {
+		return nil, err
+	}
+
+	key.SecretKey = apiSecureKeyEncrypted
+	key.Salt = salt
+
+	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
+	if err != nil {
+		return nil, err
+	}
+
+	key.ApiKey = getApiKeyHint(combinedApiKey)
+
+	return &key, nil
+}
+
+func handlePublicApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.ApiKeyType) (*models.ApiKey, error) {
+	key := models.ApiKey{
+		Id:        uuid.New(),
+		Mode:      mode.String(),
+		KeyType:   apiKeyType.String(),
+		IsActive:  true,
+		CreatedAt: time.Now(),
+	}
+
+	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
+	if err != nil {
+		return nil, err
+	}
+
+	key.ApiKey = combinedApiKey
+	key.SecretKey = apiSecretKey
+
+	return &key, nil
+}
+
+func getCombinedApiKey(key models.ApiKey, apiSecretKey string) (string, error) {
+	combinedKey := key.Id.String() + "_" + apiSecretKey
+	return utils.Encrypt([]byte(utils.Opts.ApiKeySecret), combinedKey)
+}
+
+func getApiKeyHint(key string) string {
+	apiKeyBeginning := key[0:4]
+	apiKeyEnding := key[len(key)-4:]
+	return apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
 }

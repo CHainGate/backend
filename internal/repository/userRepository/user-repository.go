@@ -2,6 +2,8 @@ package userRepository
 
 import (
 	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/utils"
+	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -14,6 +16,8 @@ type IUserRepository interface {
 	FindByEmail(id string) (*models.User, error)
 	CreateUser(user *models.User) error
 	UpdateUser(user *models.User) error
+	FindApiKeyByUserModeKeyType(userId uuid.UUID, mode utils.Mode, apiKeyType utils.ApiKeyType) ([]models.ApiKey, error)
+	DeleteApiKey(userId uuid.UUID, apiKeyId string) error
 }
 
 type UserRepository struct {
@@ -56,6 +60,23 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 
 func (r *UserRepository) UpdateUser(user *models.User) error {
 	result := r.DB.Save(&user)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (r *UserRepository) FindApiKeyByUserModeKeyType(userId uuid.UUID, mode utils.Mode, apiKeyType utils.ApiKeyType) ([]models.ApiKey, error) {
+	var keys []models.ApiKey
+	result := r.DB.Where("user_id = ? and mode = ? and key_type = ?", userId, mode.String(), apiKeyType.String()).Find(&keys)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return keys, nil
+}
+
+func (r *UserRepository) DeleteApiKey(userId uuid.UUID, apiKeyId string) error {
+	result := r.DB.Model(&models.ApiKey{}).Where("id = ? AND user_id = ?", apiKeyId, userId).Update("is_active", false)
 	if result.Error != nil {
 		return result.Error
 	}

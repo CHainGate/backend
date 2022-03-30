@@ -50,6 +50,7 @@ type Interceptor struct {
 func setup() {
 	utils.NewOpts()
 	utils.Opts.JwtSecret = "secret"
+	utils.Opts.ApiKeySecret = "apiSecretKey1234"
 	userId, err := uuid.Parse("b39310ec-59f9-454e-b1dd-2bcc18e9994f")
 	if err != nil {
 		panic(err)
@@ -265,6 +266,59 @@ func TestSendVerificationEmail(t *testing.T) {
 	err := sendVerificationEmail(*u, &httpClient)
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+// TODO: improve test
+func TestHandleSecretApiKey(t *testing.T) {
+	key, err := handleSecretApiKey("trfertfw3", utils.Test, utils.Secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key.Mode != utils.Test.String() ||
+		key.KeyType != utils.Secret.String() ||
+		key.IsActive != true {
+		t.Errorf("")
+	}
+}
+
+// TODO: improve test
+func TestHandlePublicApiKey(t *testing.T) {
+	key, err := handlePublicApiKey("trfertfw3", utils.Test, utils.Public)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key.Mode != utils.Test.String() ||
+		key.KeyType != utils.Public.String() ||
+		key.IsActive != true {
+		t.Errorf("")
+	}
+}
+
+func TestGetCombinedApiKey(t *testing.T) {
+	secretKey := "supersecret"
+	key := models.ApiKey{Id: uuid.New()}
+	combinedApiKey, err := getCombinedApiKey(key, secretKey)
+	if err != nil {
+		t.Fatalf("getCombinedApiKey error: %s", err.Error())
+	}
+	decrypt, err := utils.Decrypt([]byte(utils.Opts.ApiKeySecret), combinedApiKey)
+	if err != nil {
+		t.Fatalf("Decrypt error: %s", err.Error())
+	}
+
+	expected := key.Id.String() + "_" + secretKey
+	if expected != decrypt {
+		t.Errorf("expected combined key %s, but got %s", expected, decrypt)
+	}
+}
+
+func TestGetApiKeyHint(t *testing.T) {
+	key := "lkja4j5lkjalfj235w4lbvsst"
+	expected := "lkja...vsst"
+	hint := getApiKeyHint(key)
+	if hint != expected {
+		t.Errorf("expected hint %s, but got %s", expected, hint)
 	}
 }
 
