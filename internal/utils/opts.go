@@ -33,6 +33,7 @@ func NewOpts() {
 	}
 
 	o := &OptsType{}
+	//TODO: add default values
 	flag.IntVar(&o.ServerPort, "SERVER_PORT", lookupEnvInt("SERVER_PORT", 8000), "Server PORT")
 	flag.StringVar(&o.DbHost, "DB_HOST", lookupEnv("DB_HOST"), "Database Host")
 	flag.StringVar(&o.DbUser, "DB_USER", lookupEnv("DB_USER"), "Database User")

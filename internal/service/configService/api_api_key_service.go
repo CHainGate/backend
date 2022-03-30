@@ -64,12 +64,6 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 
 	var key *models.ApiKey
 
-	apiKeyDto := configApi.ApiKeyResponseDto{
-		Id:        key.Id.String(),
-		KeyType:   key.KeyType,
-		CreatedAt: key.CreatedAt,
-	}
-
 	apiSecretKey, err := utils.GenerateApiKey()
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
@@ -93,6 +87,13 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 	err = userRepository.Repository.UpdateUser(user)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
+	}
+
+	apiKeyDto := configApi.ApiKeyResponseDto{
+		Id:        key.Id.String(),
+		KeyType:   key.KeyType,
+		CreatedAt: key.CreatedAt,
+		Key:       key.ApiKey,
 	}
 
 	return configApi.Response(http.StatusCreated, apiKeyDto), nil

@@ -226,7 +226,7 @@ func TestCreateUser(t *testing.T) {
 
 	user, err := createUser(verificationCode, registerRequest, encryptedPassword, repo)
 	if err != nil {
-		t.Errorf("Error occured during createUser: %s", err.Error())
+		t.Fatalf("Error occured during createUser: %s", err.Error())
 	}
 
 	if user.Email != registerRequest.Email {
@@ -327,9 +327,7 @@ func (i Interceptor) RoundTrip(r *http.Request) (*http.Response, error) {
 		_ = r.Body.Close()
 	}()
 	_, err := i.testFunction(r)
-	var m map[string]interface{}
-	_ = json.NewDecoder(r.Body).Decode(&m)
-	fmt.Println(m)
+
 	if err != nil {
 		return nil, err
 	}
