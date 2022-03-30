@@ -58,6 +58,7 @@ paths:
           name: verification_code
           schema:
             type: integer
+            format: int64
           required: true
           description: Email verification code
       responses:

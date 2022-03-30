@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/CHainGate/backend/internal/repository/userRepository"
+
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/models"
@@ -36,7 +38,7 @@ func NewApiKeyApiService() configApi.ApiKeyApiServicer {
 
 // DeleteApiKey - delete api key
 func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization)
+	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
@@ -50,7 +52,7 @@ func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, auth
 
 // GenerateApiKey - create new secret api key
 func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization)
+	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
@@ -132,7 +134,7 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 
 // GetApiKey - gets the api key
 func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization)
+	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
