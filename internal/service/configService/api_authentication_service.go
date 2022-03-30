@@ -91,7 +91,7 @@ func (s *AuthenticationApiService) RegisterUser(_ context.Context, registerReque
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
 	}
 
-	err = sendVerificationEmail(user)
+	err = sendVerificationEmail(user, nil)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}

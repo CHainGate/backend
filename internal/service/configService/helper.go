@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"math/big"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -99,11 +100,12 @@ func encryptPassword(password string) ([]byte, error) {
 	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 }
 
-func sendVerificationEmail(user models.User) error {
+func sendVerificationEmail(user models.User, client *http.Client) error {
 	url := utils.Opts.EmailVerificationUrl + "?email=" + user.Email + "&code=" + strconv.FormatUint(user.EmailVerification.VerificationCode, 10)
 	content := "Please Verify your E-Mail: " + url
 	email := *proxyClientApi.NewEmailRequestDto(user.FirstName, user.Email, "Verify your E-Mail", content)
 	configuration := proxyClientApi.NewConfiguration()
+	configuration.HTTPClient = client
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err := apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
 	if err != nil {
