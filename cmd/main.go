@@ -20,7 +20,6 @@ import (
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
-	//database.Connect()
 	err := repository.InitAllRepositories()
 	if err != nil {
 		panic(err)

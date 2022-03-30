@@ -63,6 +63,7 @@ func verifyApiKeyAuthentication(receivedApiKey string) (*models.User, error) {
 	apiKeySecret := apiKeyDetails[1]
 
 	var databaseApiKey models.ApiKey
+	// TODO: refactor to userRepository
 	result := database.DB.Where("id = ?", apiKeyId).Find(&databaseApiKey)
 	if result.Error != nil {
 		return nil, err
@@ -91,6 +92,7 @@ func verifyApiKeyAuthentication(receivedApiKey string) (*models.User, error) {
 	}
 
 	var user models.User
+	// TODO: refactor to userRepository
 	result = database.DB.Where("id = ?", databaseApiKey.UserId).Find(&user)
 	if result.Error != nil {
 		return nil, err
