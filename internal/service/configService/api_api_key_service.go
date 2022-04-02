@@ -12,7 +12,7 @@ package configService
 import (
 	"context"
 	"errors"
-	"github.com/CHainGate/backend/internal/repository/userRepository"
+	"github.com/CHainGate/backend/internal/repository"
 	"net/http"
 
 	"github.com/CHainGate/backend/configApi"
@@ -33,12 +33,12 @@ func NewApiKeyApiService() configApi.ApiKeyApiServicer {
 
 // DeleteApiKey - delete api key
 func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
+	user, err := checkAuthorizationAndReturnUser(authorization, repository.UserRepo)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	err = userRepository.Repository.DeleteApiKey(user.Id, apiKeyId)
+	err = repository.ApiKeyRepo.DeleteApiKey(user.Id, apiKeyId)
 	if err != nil {
 		return configApi.Response(http.StatusBadRequest, nil), err
 	}
@@ -47,7 +47,7 @@ func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, auth
 
 // GenerateApiKey - create new secret api key
 func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
+	user, err := checkAuthorizationAndReturnUser(authorization, repository.UserRepo)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
@@ -69,8 +69,9 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
+	var combinedApiKey string
 	if apiKeyType == utils.Secret {
-		key, err = handleSecretApiKey(apiSecretKey, mode, apiKeyType)
+		key, combinedApiKey, err = handleSecretApiKey(apiSecretKey, mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
@@ -84,7 +85,7 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 	}
 
 	user.ApiKeys = append(user.ApiKeys, *key)
-	err = userRepository.Repository.UpdateUser(user)
+	err = repository.UserRepo.UpdateUser(user)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
 	}
@@ -96,12 +97,16 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		Key:       key.ApiKey,
 	}
 
+	if apiKeyType == utils.Secret {
+		apiKeyDto.Key = combinedApiKey
+	}
+
 	return configApi.Response(http.StatusCreated, apiKeyDto), nil
 }
 
 // GetApiKey - gets the api key
 func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
+	user, err := checkAuthorizationAndReturnUser(authorization, repository.UserRepo)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
@@ -116,7 +121,7 @@ func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType str
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("api key type does not exist")
 	}
 
-	keys, err := userRepository.Repository.FindApiKeyByUserModeKeyType(user.Id, enumMode, enumApiKeyType)
+	keys, err := repository.ApiKeyRepo.FindApiKeyByUserModeKeyType(user.Id, enumMode, enumApiKeyType)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}

@@ -4,21 +4,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CHainGate/backend/configApi"
-	"github.com/CHainGate/backend/internal/models"
-	"github.com/CHainGate/backend/internal/repository/userRepository"
-	"github.com/CHainGate/backend/internal/utils"
-	"github.com/CHainGate/backend/proxyClientApi"
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/google/uuid"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/CHainGate/backend/internal/repository"
 	"log"
 	"math/big"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/CHainGate/backend/configApi"
+	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/utils"
+	"github.com/CHainGate/backend/proxyClientApi"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/uuid"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var jwtTest JwtTest
@@ -59,7 +60,7 @@ func setup() {
 	u.EmailVerification.UserId = userId
 }
 
-func findUserByEmailMock() userRepository.IUserRepository {
+func findUserByEmailMock() repository.IUserRepository {
 	mock, repo := NewMock()
 	row := sqlmock.NewRows([]string{"id", "first_name", "last_name", "email", "password", "is_active", "created_at"}).
 		AddRow(u.Id, u.FirstName, u.LastName, u.Email, u.Password, u.IsActive, u.CreatedAt)
@@ -77,7 +78,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func NewMock() (sqlmock.Sqlmock, userRepository.IUserRepository) {
+func NewMock() (sqlmock.Sqlmock, repository.IUserRepository) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		log.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -88,7 +89,7 @@ func NewMock() (sqlmock.Sqlmock, userRepository.IUserRepository) {
 	})
 
 	gormDb, err := gorm.Open(dialector, &gorm.Config{})
-	return mock, &userRepository.UserRepository{DB: gormDb}
+	return mock, &repository.UserRepository{DB: gormDb}
 }
 
 func TestCreateJwtToken(t *testing.T) {
@@ -271,7 +272,7 @@ func TestSendVerificationEmail(t *testing.T) {
 
 // TODO: improve test
 func TestHandleSecretApiKey(t *testing.T) {
-	key, err := handleSecretApiKey("trfertfw3", utils.Test, utils.Secret)
+	key, _, err := handleSecretApiKey("trfertfw3", utils.Test, utils.Secret)
 	if err != nil {
 		t.Fatal(err)
 	}
