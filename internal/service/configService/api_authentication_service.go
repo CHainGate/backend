@@ -12,10 +12,9 @@ package configService
 import (
 	"context"
 	"errors"
+	"github.com/CHainGate/backend/internal/repository"
 	"net/http"
 	"time"
-
-	"github.com/CHainGate/backend/internal/repository/userRepository"
 
 	"github.com/CHainGate/backend/configApi"
 	"gorm.io/gorm"
@@ -36,7 +35,7 @@ const jwtDuration = time.Hour * 24
 
 // Login - Authenticate to chaingate
 func (s *AuthenticationApiService) Login(_ context.Context, loginRequestDto configApi.LoginRequestDto) (configApi.ImplResponse, error) {
-	user, err := getUserByEmail(loginRequestDto.Email, userRepository.Repository)
+	user, err := getUserByEmail(loginRequestDto.Email, repository.UserRepo)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("User or password wrong ")
 	}
@@ -83,7 +82,7 @@ func (s *AuthenticationApiService) RegisterUser(_ context.Context, registerReque
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	user, err := createUser(verificationCode, registerRequestDto, encryptedPassword, userRepository.Repository)
+	user, err := createUser(verificationCode, registerRequestDto, encryptedPassword, repository.UserRepo)
 	if err != nil {
 		if err.Error() == "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)" {
 			return configApi.Response(http.StatusBadRequest, nil), errors.New("E-Mail already exists")
@@ -101,12 +100,12 @@ func (s *AuthenticationApiService) RegisterUser(_ context.Context, registerReque
 
 // VerifyEmail - Verify user email
 func (s *AuthenticationApiService) VerifyEmail(_ context.Context, email string, verificationCode int64) (configApi.ImplResponse, error) {
-	user, err := getUserByEmail(email, userRepository.Repository)
+	user, err := getUserByEmail(email, repository.UserRepo)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	err = handleVerification(user, verificationCode, userRepository.Repository)
+	err = handleVerification(user, verificationCode, repository.UserRepo)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}

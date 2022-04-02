@@ -15,9 +15,11 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/repository"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/CHainGate/backend/internalApi"
 	"github.com/CHainGate/backend/proxyClientApi"
@@ -36,63 +38,87 @@ func NewPaymentUpdateApiService() internalApi.PaymentUpdateApiServicer {
 
 // UpdatePayment - update payment
 func (s *PaymentUpdateApiService) UpdatePayment(_ context.Context, payment internalApi.PaymentUpdateDto) (internalApi.ImplResponse, error) {
-	// save to db
-	/*	var currentPayment models.Payment
-		database.DB.Where("id = ?", payment.PaymentId).Find(&currentPayment)
+	currentPayment, err := updatePayment(payment, repository.PaymentRepo)
+	if err != nil {
+		return internalApi.Response(http.StatusInternalServerError, nil), err
+	}
 
-		paymentId, err := uuid.Parse(payment.PaymentId)
-		if err != nil {
-			return internalApi.ImplResponse{}, err
-		}
+	err = callWebhook(currentPayment)
+	if err != nil {
+		return internalApi.Response(http.StatusInternalServerError, nil), err
+	}
 
-		status := models.PaymentStatus{
-			PaymentId: paymentId,
-			PaymentStatus: payment.PaymentStatus,
-			PayAmount: payment.PayAmount,
-			ActuallyPaid: payment.ActuallyPaid,
-			CreatedAt: payment.CreatedAt,
-		}
+	return internalApi.Response(http.StatusOK, nil), nil
+}
 
-		currentPayment.PaymentStatus = append(currentPayment.PaymentStatus, status)
-		currentPayment.UpdatedAt = payment.CreatedAt
+func updatePayment(payment internalApi.PaymentUpdateDto, repo repository.IPaymentRepository) (*models.Payment, error) {
+	currentPayment, err := repo.FindByBlockchainIdAndCurrency(payment.PaymentId, payment.PayCurrency)
+	if err != nil {
+		return nil, err
+	}
 
-		result := database.DB.Save(&currentPayment)
-		if result.Error != nil {
+	newStatus := models.PaymentStatus{
+		PaymentStatus: payment.PaymentStatus,
+		ActuallyPaid:  *payment.ActuallyPaid,
+		PayAmount:     payment.PayAmount,
+		CreatedAt:     time.Now(),
+	}
 
-		}*/
+	currentPayment.PaymentStatus = append(currentPayment.PaymentStatus, newStatus)
+	currentPayment.UpdatedAt = time.Now()
 
-	// webhookcall
+	err = repo.UpdatePayment(currentPayment)
+	if err != nil {
+		return nil, err
+	}
+
+	currentPayment, err = repo.FindByBlockchainIdAndCurrency(payment.PaymentId, payment.PayCurrency)
+	if err != nil {
+		return nil, err
+	}
+	return currentPayment, nil
+}
+
+func callWebhook(payment *models.Payment) error {
+	currentState := payment.PaymentStatus[0] //states are sorted
 	body := proxyClientApi.WebHookBody{
 		Data: proxyClientApi.WebHookData{
-			PaymentId: payment.PaymentId,
-			//PayAddress:    payment.PayAddress,
-			//PriceAmount:   payment.PriceAmount,
-			//PriceCurrency: payment.PriceCurrency,
-			PayAmount:     payment.PayAmount,
+			PaymentId:     payment.Id.String(),
+			PayAddress:    payment.PayAddress,
+			PriceAmount:   payment.PriceAmount,
+			PriceCurrency: payment.PriceCurrency,
+			PayAmount:     currentState.PayAmount,
 			PayCurrency:   payment.PayCurrency,
-			ActuallyPaid:  *proxyClientApi.NewNullableFloat64(payment.ActuallyPaid),
-			PaymentStatus: payment.PaymentStatus,
-			//CreatedAt:     payment.CreatedAt,
-			//UpdatedAt:     payment.UpdatedAt,
+			ActuallyPaid:  *proxyClientApi.NewNullableFloat64(&currentState.ActuallyPaid),
+			PaymentStatus: currentState.PaymentStatus,
+			CreatedAt:     payment.CreatedAt,
+			UpdatedAt:     payment.UpdatedAt,
 		},
 	}
 
-	mac := hmac.New(sha512.New, []byte("supersecret"))
-	data, err := json.Marshal(body.Data)
-	_, err = io.WriteString(mac, string(data))
+	signature, err := createSignature(body.Data)
 	if err != nil {
-
+		return err
 	}
-	expectedMAC := mac.Sum(nil)
-	body.Signature = hex.EncodeToString(expectedMAC)
+	body.Signature = signature
 
-	webhook := *proxyClientApi.NewWebHookRequestDto("http://localhost:5000/webhook", body)
+	webhook := *proxyClientApi.NewWebHookRequestDto(payment.CallbackUrl, body)
 	configuration := proxyClientApi.NewConfiguration()
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err = apiClient.WebhookApi.SendWebhook(context.Background()).WebHookRequestDto(webhook).Execute()
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
+	return nil
+}
 
-	return internalApi.Response(http.StatusOK, nil), nil
+func createSignature(data proxyClientApi.WebHookData) (string, error) {
+	mac := hmac.New(sha512.New, []byte("supersecret"))
+	jsonData, err := json.Marshal(data)
+	_, err = io.WriteString(mac, string(jsonData))
+	if err != nil {
+		return "", err
+	}
+	expectedMAC := mac.Sum(nil)
+	return hex.EncodeToString(expectedMAC), nil
 }

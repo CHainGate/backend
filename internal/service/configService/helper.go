@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/CHainGate/backend/internal/repository"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/CHainGate/backend/configApi"
-	"github.com/CHainGate/backend/internal/repository/userRepository"
 	"github.com/CHainGate/backend/proxyClientApi"
 	"golang.org/x/crypto/bcrypt"
 
@@ -23,7 +23,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-func checkAuthorizationAndReturnUser(bearer string, repo userRepository.IUserRepository) (*models.User, error) {
+func checkAuthorizationAndReturnUser(bearer string, repo repository.IUserRepository) (*models.User, error) {
 	bearerToken := strings.Split(bearer, " ")
 	claims, err := decodeJwtToken(bearerToken[1])
 	if err != nil {
@@ -64,7 +64,7 @@ func createJwtToken(issuer string, duration time.Duration) (string, error) {
 	return claims.SignedString([]byte(utils.Opts.JwtSecret))
 }
 
-func getUserByEmail(email string, repo userRepository.IUserRepository) (*models.User, error) {
+func getUserByEmail(email string, repo repository.IUserRepository) (*models.User, error) {
 	user, err := repo.FindByEmail(email)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func createUser(
 	verificationCode *big.Int,
 	registerRequestDto configApi.RegisterRequestDto,
 	encryptedPassword []byte,
-	repo userRepository.IUserRepository,
+	repo repository.IUserRepository,
 ) (models.User, error) {
 	emailVerification := models.EmailVerification{
 		VerificationCode: verificationCode.Uint64(),
@@ -144,7 +144,7 @@ func createUser(
 	return user, nil
 }
 
-func handleVerification(user *models.User, verificationCode int64, repo userRepository.IUserRepository) error {
+func handleVerification(user *models.User, verificationCode int64, repo repository.IUserRepository) error {
 	if user.EmailVerification.VerificationCode == uint64(verificationCode) {
 		user.IsActive = true
 		err := repo.UpdateUser(user)

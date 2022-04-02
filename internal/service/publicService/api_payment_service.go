@@ -12,14 +12,13 @@ package publicService
 import (
 	"context"
 	"errors"
+	"github.com/CHainGate/backend/internal/repository"
 	"github.com/google/uuid"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/CHainGate/backend/ethClientApi"
-
-	"github.com/CHainGate/backend/internal/repository/userRepository"
 
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
@@ -40,7 +39,7 @@ func NewPaymentApiService() publicApi.PaymentApiServicer {
 // NewPayment - Create a new payment
 func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymentRequestDto publicApi.PaymentRequestDto) (publicApi.ImplResponse, error) {
 	// only user data without preload, if needed add preload
-	user, apiKey, err := verifyApiKeyAuthentication(xAPIKEY, userRepository.Repository)
+	user, apiKey, err := verifyApiKeyAuthentication(xAPIKEY, repository.UserRepo)
 	if err != nil {
 		if err.Error() == "not authorized" {
 			return publicApi.Response(http.StatusForbidden, nil), err
@@ -79,7 +78,7 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 	return publicApi.Response(http.StatusCreated, paymentResponseDto), nil
 }
 
-func verifyApiKeyAuthentication(receivedApiKey string, repo userRepository.IUserRepository) (*models.User, *models.ApiKey, error) {
+func verifyApiKeyAuthentication(receivedApiKey string, repo repository.IUserRepository) (*models.User, *models.ApiKey, error) {
 	decryptedApiKey, err := utils.Decrypt([]byte(utils.Opts.ApiKeySecret), receivedApiKey)
 	if err != nil {
 		return nil, nil, err
@@ -89,7 +88,7 @@ func verifyApiKeyAuthentication(receivedApiKey string, repo userRepository.IUser
 	apiKeyId := apiKeyDetails[0]
 	apiKeySecret := apiKeyDetails[1]
 
-	apiKey, err := repo.FindApiKeyById(apiKeyId)
+	apiKey, err := repository.ApiKeyRepo.FindApiKeyById(apiKeyId)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -170,7 +169,7 @@ func handleEthClientCallResponse(resp *ethClientApi.PaymentResponse, mode utils.
 	}
 
 	user.Payments = append(user.Payments, payment)
-	err = userRepository.Repository.UpdateUser(user)
+	err = repository.UserRepo.UpdateUser(user)
 	if err != nil {
 		return nil, err
 	}
