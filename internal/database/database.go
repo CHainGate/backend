@@ -14,6 +14,7 @@ var (
 	DB *gorm.DB
 )
 
+// Connect TODO: remove database.go
 func Connect() {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", utils.Opts.DbHost, utils.Opts.DbUser, utils.Opts.DbPassword, utils.Opts.DbName, utils.Opts.DbPort)
 	connection, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})

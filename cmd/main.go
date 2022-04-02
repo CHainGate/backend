@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/CHainGate/backend/internal/repository"
+
 	"github.com/CHainGate/backend/configApi"
-	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/service/configService"
 	"github.com/CHainGate/backend/internal/service/internalService"
 	"github.com/CHainGate/backend/internal/service/publicService"
@@ -19,7 +20,10 @@ import (
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
-	database.Connect()
+	err := repository.InitAllRepositories()
+	if err != nil {
+		panic(err)
+	}
 
 	// config api
 	ApiKeyApiService := configService.NewApiKeyApiService()

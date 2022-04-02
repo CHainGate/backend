@@ -12,15 +12,12 @@ package configService
 import (
 	"context"
 	"errors"
+	"github.com/CHainGate/backend/internal/repository/userRepository"
 	"net/http"
-	"time"
 
 	"github.com/CHainGate/backend/configApi"
-	"github.com/CHainGate/backend/internal/database"
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/utils"
-
-	"github.com/google/uuid"
 )
 
 // ApiKeyApiService is a service that implements the logic for the ApiKeyApiServicer
@@ -36,21 +33,21 @@ func NewApiKeyApiService() configApi.ApiKeyApiServicer {
 
 // DeleteApiKey - delete api key
 func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization)
+	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	result := database.DB.Model(&models.ApiKey{}).Where("id = ? AND user_id = ?", apiKeyId, user.Id).Update("is_active", false)
-	if result.Error != nil {
-		return configApi.Response(http.StatusBadRequest, nil), errors.New("")
+	err = userRepository.Repository.DeleteApiKey(user.Id, apiKeyId)
+	if err != nil {
+		return configApi.Response(http.StatusBadRequest, nil), err
 	}
 	return configApi.Response(http.StatusNoContent, nil), nil
 }
 
 // GenerateApiKey - create new secret api key
 func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization)
+	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
@@ -65,19 +62,7 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
 	}
 
-	key := models.ApiKey{
-		Id:        uuid.New(),
-		Mode:      mode.String(),
-		KeyType:   apiKeyType.String(),
-		IsActive:  true,
-		CreatedAt: time.Now(),
-	}
-
-	apiKeyDto := configApi.ApiKeyResponseDto{
-		Id:        key.Id.String(),
-		KeyType:   key.KeyType,
-		CreatedAt: key.CreatedAt,
-	}
+	var key *models.ApiKey
 
 	apiSecretKey, err := utils.GenerateApiKey()
 	if err != nil {
@@ -85,46 +70,30 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 	}
 
 	if apiKeyType == utils.Secret {
-		salt, err := utils.CreateSalt()
+		key, err = handleSecretApiKey(apiSecretKey, mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
-		apiSecureKeyEncrypted, err := utils.ScryptApiKey(apiSecretKey, salt)
-		if err != nil {
-			return configApi.Response(http.StatusInternalServerError, nil), err
-		}
-		key.SecretKey = apiSecureKeyEncrypted
-		key.Salt = salt
-
-		combinedKey := key.Id.String() + "_" + apiSecretKey
-		encryptAES, err := utils.Encrypt([]byte(utils.Opts.ApiKeySecret), combinedKey)
-		if err != nil {
-			return configApi.Response(http.StatusInternalServerError, nil), err
-		}
-
-		apiKeyBeginning := encryptAES[0:4]
-		apiKeyEnding := encryptAES[len(encryptAES)-5:]
-		key.ApiKey = apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
-
-		apiKeyDto.Key = encryptAES
 	}
 
 	if apiKeyType == utils.Public {
-		combinedKey := key.Id.String() + "_" + apiSecretKey
-		encryptAES, err := utils.Encrypt([]byte(utils.Opts.ApiKeySecret), combinedKey)
+		key, err = handlePublicApiKey(apiSecretKey, mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
-		key.ApiKey = encryptAES
-		key.SecretKey = apiSecretKey
-
-		apiKeyDto.Key = encryptAES
 	}
 
-	user.ApiKeys = append(user.ApiKeys, key)
-	result := database.DB.Save(&user)
-	if result.Error != nil {
+	user.ApiKeys = append(user.ApiKeys, *key)
+	err = userRepository.Repository.UpdateUser(user)
+	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
+	}
+
+	apiKeyDto := configApi.ApiKeyResponseDto{
+		Id:        key.Id.String(),
+		KeyType:   key.KeyType,
+		CreatedAt: key.CreatedAt,
+		Key:       key.ApiKey,
 	}
 
 	return configApi.Response(http.StatusCreated, apiKeyDto), nil
@@ -132,7 +101,7 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 
 // GetApiKey - gets the api key
 func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization)
+	user, err := checkAuthorizationAndReturnUser(authorization, userRepository.Repository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
@@ -144,13 +113,12 @@ func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType str
 
 	enumApiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(keyType)
 	if !ok {
-		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("api key type does not exist")
 	}
 
-	var keys []models.ApiKey
-	result := database.DB.Where("user_id = ? and mode = ? and key_type = ?", user.Id, enumMode.String(), enumApiKeyType.String()).Find(&keys)
-	if result.Error != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("")
+	keys, err := userRepository.Repository.FindApiKeyByUserModeKeyType(user.Id, enumMode, enumApiKeyType)
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	var resultList []configApi.ApiKeyResponseDto
