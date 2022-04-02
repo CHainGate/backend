@@ -1,6 +1,6 @@
 openapi: 3.0.0
 servers:
-  - url: 'http://localhost/api/public'
+  - url: 'http://localhost:8000/api/public'
 info:
   description: >-
     This is the public OpenAPI definition.

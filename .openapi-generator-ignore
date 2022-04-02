@@ -7,3 +7,4 @@ api/
 **service.go
 
 /proxyClientApi/go.mod
+/ethClientApi/go.mod

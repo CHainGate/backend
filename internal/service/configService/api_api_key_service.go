@@ -12,8 +12,9 @@ package configService
 import (
 	"context"
 	"errors"
-	"github.com/CHainGate/backend/internal/repository/userRepository"
 	"net/http"
+
+	"github.com/CHainGate/backend/internal/repository/userRepository"
 
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/models"
@@ -69,8 +70,9 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
+	var combinedApiKey string
 	if apiKeyType == utils.Secret {
-		key, err = handleSecretApiKey(apiSecretKey, mode, apiKeyType)
+		key, combinedApiKey, err = handleSecretApiKey(apiSecretKey, mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
@@ -94,6 +96,10 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		KeyType:   key.KeyType,
 		CreatedAt: key.CreatedAt,
 		Key:       key.ApiKey,
+	}
+
+	if apiKeyType == utils.Secret {
+		apiKeyDto.Key = combinedApiKey
 	}
 
 	return configApi.Response(http.StatusCreated, apiKeyDto), nil

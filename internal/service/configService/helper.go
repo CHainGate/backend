@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/google/uuid"
 	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/repository/userRepository"
@@ -155,7 +156,7 @@ func handleVerification(user *models.User, verificationCode int64, repo userRepo
 	return errors.New("Wrong verification code ")
 }
 
-func handleSecretApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.ApiKeyType) (*models.ApiKey, error) {
+func handleSecretApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.ApiKeyType) (*models.ApiKey, string, error) {
 	key := models.ApiKey{
 		Id:        uuid.New(),
 		Mode:      mode.String(),
@@ -166,12 +167,12 @@ func handleSecretApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.A
 
 	salt, err := utils.CreateSalt()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	apiSecureKeyEncrypted, err := utils.ScryptPassword(apiSecretKey, salt)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	key.SecretKey = apiSecureKeyEncrypted
@@ -179,12 +180,12 @@ func handleSecretApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.A
 
 	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	key.ApiKey = getApiKeyHint(combinedApiKey)
 
-	return &key, nil
+	return &key, combinedApiKey, nil
 }
 
 func handlePublicApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.ApiKeyType) (*models.ApiKey, error) {

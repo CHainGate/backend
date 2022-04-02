@@ -4,6 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"math/big"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/models"
 	"github.com/CHainGate/backend/internal/repository/userRepository"
@@ -13,12 +20,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
-	"math/big"
-	"net/http"
-	"os"
-	"testing"
-	"time"
 )
 
 var jwtTest JwtTest
@@ -271,7 +272,7 @@ func TestSendVerificationEmail(t *testing.T) {
 
 // TODO: improve test
 func TestHandleSecretApiKey(t *testing.T) {
-	key, err := handleSecretApiKey("trfertfw3", utils.Test, utils.Secret)
+	key, _, err := handleSecretApiKey("trfertfw3", utils.Test, utils.Secret)
 	if err != nil {
 		t.Fatal(err)
 	}

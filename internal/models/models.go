@@ -28,12 +28,11 @@ type EmailVerification struct {
 }
 
 type Wallet struct {
-	Id        uuid.UUID `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
-	PaymentId uuid.UUID
-	UserId    uuid.UUID
-	Currency  string
-	Mode      string
-	address   string
+	Id       uuid.UUID `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	UserId   uuid.UUID
+	Currency string
+	Mode     string
+	Address  string
 }
 
 type ApiKey struct {
@@ -49,9 +48,11 @@ type ApiKey struct {
 }
 
 type Payment struct {
-	BlockchainPaymentId uuid.UUID `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	Id                  uuid.UUID `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	BlockchainPaymentId uuid.UUID
 	UserId              uuid.UUID
 	Wallet              Wallet
+	WalletId            uuid.UUID
 	Mode                string
 	PriceAmount         float64 `gorm:"type:numeric"`
 	PriceCurrency       string
@@ -60,11 +61,11 @@ type Payment struct {
 	CallbackUrl         string
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
-	PaymentStatus       []PaymentStatus `gorm:"foreignkey:PaymentId;references:BlockchainPaymentId"`
+	PaymentStatus       []PaymentStatus
 }
 
 type PaymentStatus struct {
-	Id            uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Id            uuid.UUID `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
 	PaymentId     uuid.UUID
 	PayAmount     float64 `gorm:"type:numeric"`
 	ActuallyPaid  float64 `gorm:"type:numeric"`

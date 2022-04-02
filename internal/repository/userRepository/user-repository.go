@@ -13,11 +13,14 @@ var (
 )
 
 type IUserRepository interface {
-	FindByEmail(id string) (*models.User, error)
+	FindByEmail(email string) (*models.User, error)
+	FindById(id uuid.UUID) (*models.User, error)
 	CreateUser(user *models.User) error
 	UpdateUser(user *models.User) error
 	FindApiKeyByUserModeKeyType(userId uuid.UUID, mode utils.Mode, apiKeyType utils.ApiKeyType) ([]models.ApiKey, error)
 	DeleteApiKey(userId uuid.UUID, apiKeyId string) error
+	FindApiKeyById(id string) (*models.ApiKey, error)
+	CreateWallet(wallet *models.Wallet) error
 }
 
 type UserRepository struct {
@@ -44,6 +47,15 @@ func NewRepository(dsn string) (IUserRepository, error) {
 func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	var user models.User
 	result := r.DB.Where("email = ?", email).First(&user)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) FindById(id uuid.UUID) (*models.User, error) {
+	var user models.User
+	result := r.DB.Preload("Wallets").Where("id = ?", id).First(&user)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -77,6 +89,23 @@ func (r *UserRepository) FindApiKeyByUserModeKeyType(userId uuid.UUID, mode util
 
 func (r *UserRepository) DeleteApiKey(userId uuid.UUID, apiKeyId string) error {
 	result := r.DB.Model(&models.ApiKey{}).Where("id = ? AND user_id = ?", apiKeyId, userId).Update("is_active", false)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (r *UserRepository) FindApiKeyById(id string) (*models.ApiKey, error) {
+	var apiKey models.ApiKey
+	result := r.DB.Where("id = ?", id).Find(&apiKey)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &apiKey, nil
+}
+
+func (r *UserRepository) CreateWallet(wallet *models.Wallet) error {
+	result := r.DB.Create(&wallet)
 	if result.Error != nil {
 		return result.Error
 	}
