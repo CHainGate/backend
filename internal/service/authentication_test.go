@@ -183,6 +183,7 @@ func TestHandleVerification(t *testing.T) {
 		FirstName: "hans",
 		LastName:  "meier",
 		Password:  "pw",
+		Salt:      []byte("salt"),
 		Email:     "test@mail.com",
 		IsActive:  true,
 		EmailVerification: model.EmailVerification{
@@ -192,8 +193,8 @@ func TestHandleVerification(t *testing.T) {
 		},
 	}
 
-	merchantRow := sqlmock.NewRows([]string{"id", "first_name", "last_name", "email", "password", "is_active", "created_at"}).
-		AddRow(merchant.ID, merchant.FirstName, merchant.LastName, merchant.Email, merchant.Password, merchant.IsActive, merchant.CreatedAt)
+	merchantRow := sqlmock.NewRows([]string{"id", "first_name", "last_name", "email", "password", "salt", "is_active", "created_at"}).
+		AddRow(merchant.ID, merchant.FirstName, merchant.LastName, merchant.Email, merchant.Password, merchant.Salt, merchant.IsActive, merchant.CreatedAt)
 	verificationRow := sqlmock.NewRows([]string{"id", "merchant_id", "verification_code"}).AddRow(merchant.EmailVerification.ID, testMerchant.ID, merchant.EmailVerification.VerificationCode)
 
 	mock.ExpectQuery("SELECT (.+) FROM \"merchants\"").WithArgs(merchant.Email).WillReturnRows(merchantRow)
@@ -201,7 +202,7 @@ func TestHandleVerification(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE \"merchants\"").
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectQuery("INSERT INTO \"email_verifications\"").
