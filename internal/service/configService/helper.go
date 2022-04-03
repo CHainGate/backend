@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/CHainGate/backend/internal/repository"
 	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/CHainGate/backend/internal/repository"
+	"github.com/CHainGate/backend/pkg/enum"
 
 	"github.com/google/uuid"
 
@@ -17,13 +19,13 @@ import (
 	"github.com/CHainGate/backend/proxyClientApi"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/utils"
 
 	"github.com/golang-jwt/jwt/v4"
 )
 
-func checkAuthorizationAndReturnUser(bearer string, repo repository.IUserRepository) (*models.User, error) {
+func handleAuthorization(bearer string, repo repository.IMerchantRepository) (*model.Merchant, error) {
 	bearerToken := strings.Split(bearer, " ")
 	claims, err := decodeJwtToken(bearerToken[1])
 	if err != nil {
@@ -34,12 +36,12 @@ func checkAuthorizationAndReturnUser(bearer string, repo repository.IUserReposit
 		return nil, errors.New("token expired")
 	}
 
-	user, err := getUserByEmail(claims.Issuer, repo)
+	merchant, err := getMerchantByEmail(claims.Issuer, repo)
 	if err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	return merchant, nil
 }
 
 func decodeJwtToken(jwtToken string) (*jwt.RegisteredClaims, error) {
@@ -64,21 +66,21 @@ func createJwtToken(issuer string, duration time.Duration) (string, error) {
 	return claims.SignedString([]byte(utils.Opts.JwtSecret))
 }
 
-func getUserByEmail(email string, repo repository.IUserRepository) (*models.User, error) {
-	user, err := repo.FindByEmail(email)
+func getMerchantByEmail(email string, repo repository.IMerchantRepository) (*model.Merchant, error) {
+	merchant, err := repo.FindByEmail(email)
 	if err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	return merchant, nil
 }
 
 //TODO bcrypt to scrypt and test
-func canUserLogin(user *models.User, password string) error {
-	if !user.IsActive {
-		return errors.New("User not active ")
+func canMerchantLogin(merchant *model.Merchant, password string) error {
+	if !merchant.IsActive {
+		return errors.New("Merchant not active ")
 	}
-	err := bcrypt.CompareHashAndPassword(user.Password, []byte(password))
+	err := bcrypt.CompareHashAndPassword(merchant.Password, []byte(password))
 	if err != nil {
 		return errors.New("Wrong username or password ")
 	}
@@ -102,10 +104,10 @@ func encryptPassword(password string) ([]byte, error) {
 	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 }
 
-func sendVerificationEmail(user models.User, client *http.Client) error {
-	url := utils.Opts.EmailVerificationUrl + "?email=" + user.Email + "&code=" + strconv.FormatUint(user.EmailVerification.VerificationCode, 10)
+func sendVerificationEmail(merchant *model.Merchant, client *http.Client) error {
+	url := utils.Opts.EmailVerificationUrl + "?email=" + merchant.Email + "&code=" + strconv.FormatUint(merchant.EmailVerification.VerificationCode, 10)
 	content := "Please Verify your E-Mail: " + url
-	email := *proxyClientApi.NewEmailRequestDto(user.FirstName, user.Email, "Verify your E-Mail", content)
+	email := *proxyClientApi.NewEmailRequestDto(merchant.FirstName, merchant.Email, "Verify your E-Mail", content)
 	configuration := proxyClientApi.NewConfiguration()
 	configuration.HTTPClient = client
 	apiClient := proxyClientApi.NewAPIClient(configuration)
@@ -116,38 +118,36 @@ func sendVerificationEmail(user models.User, client *http.Client) error {
 	return nil
 }
 
-func createUser(
+func createMerchant(
 	verificationCode *big.Int,
 	registerRequestDto configApi.RegisterRequestDto,
 	encryptedPassword []byte,
-	repo repository.IUserRepository,
-) (models.User, error) {
-	emailVerification := models.EmailVerification{
+	repo repository.IMerchantRepository,
+) (*model.Merchant, error) {
+	emailVerification := model.EmailVerification{
 		VerificationCode: verificationCode.Uint64(),
-		CreatedAt:        time.Now(),
 	}
 
-	user := models.User{
+	merchant := model.Merchant{
 		FirstName:         registerRequestDto.FirstName,
 		LastName:          registerRequestDto.LastName,
 		Email:             registerRequestDto.Email,
 		Password:          encryptedPassword,
 		EmailVerification: emailVerification,
 		IsActive:          false,
-		CreatedAt:         time.Now(),
 	}
 
-	err := repo.CreateUser(&user)
+	err := repo.Create(&merchant)
 	if err != nil {
-		return models.User{}, err
+		return nil, err
 	}
-	return user, nil
+	return &merchant, nil
 }
 
-func handleVerification(user *models.User, verificationCode int64, repo repository.IUserRepository) error {
-	if user.EmailVerification.VerificationCode == uint64(verificationCode) {
-		user.IsActive = true
-		err := repo.UpdateUser(user)
+func handleVerification(merchant *model.Merchant, verificationCode int64, repo repository.IMerchantRepository) error {
+	if merchant.EmailVerification.VerificationCode == uint64(verificationCode) {
+		merchant.IsActive = true
+		err := repo.Update(merchant)
 		if err != nil {
 			return err
 		}
@@ -156,14 +156,13 @@ func handleVerification(user *models.User, verificationCode int64, repo reposito
 	return errors.New("Wrong verification code ")
 }
 
-func handleSecretApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.ApiKeyType) (*models.ApiKey, string, error) {
-	key := models.ApiKey{
-		Id:        uuid.New(),
-		Mode:      mode.String(),
-		KeyType:   apiKeyType.String(),
-		IsActive:  true,
-		CreatedAt: time.Now(),
+func handleSecretApiKey(apiSecretKey string, mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, string, error) {
+	key := model.ApiKey{
+		Mode:     mode,
+		KeyType:  apiKeyType,
+		IsActive: true,
 	}
+	key.ID = uuid.New()
 
 	salt, err := utils.CreateSalt()
 	if err != nil {
@@ -188,13 +187,11 @@ func handleSecretApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.A
 	return &key, combinedApiKey, nil
 }
 
-func handlePublicApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.ApiKeyType) (*models.ApiKey, error) {
-	key := models.ApiKey{
-		Id:        uuid.New(),
-		Mode:      mode.String(),
-		KeyType:   apiKeyType.String(),
-		IsActive:  true,
-		CreatedAt: time.Now(),
+func handlePublicApiKey(apiSecretKey string, mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error) {
+	key := model.ApiKey{
+		Mode:     mode,
+		KeyType:  apiKeyType,
+		IsActive: true,
 	}
 
 	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
@@ -208,8 +205,8 @@ func handlePublicApiKey(apiSecretKey string, mode utils.Mode, apiKeyType utils.A
 	return &key, nil
 }
 
-func getCombinedApiKey(key models.ApiKey, apiSecretKey string) (string, error) {
-	combinedKey := key.Id.String() + "_" + apiSecretKey
+func getCombinedApiKey(key model.ApiKey, apiSecretKey string) (string, error) {
+	combinedKey := key.ID.String() + "_" + apiSecretKey
 	return utils.Encrypt([]byte(utils.Opts.ApiKeySecret), combinedKey)
 }
 

@@ -61,7 +61,7 @@ components:
         - pay_currency
         - actually_paid
         - callback_url
-        - payment_status
+        - payment_state
         - created_at
         - updated_at
       properties:
@@ -92,7 +92,7 @@ components:
            nullable: true
           callback_url:
            type: string
-          payment_status:
+          payment_state:
            type: string
            enum:
              - waiting

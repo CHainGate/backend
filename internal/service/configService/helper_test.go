@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/CHainGate/backend/internal/repository"
 	"log"
 	"math/big"
 	"net/http"
@@ -12,8 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/CHainGate/backend/internal/repository"
+	"github.com/CHainGate/backend/pkg/enum"
+
 	"github.com/CHainGate/backend/configApi"
-	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/proxyClientApi"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -23,17 +25,14 @@ import (
 )
 
 var jwtTest JwtTest
-var u = &models.User{
+var testMerchant = &model.Merchant{
 	FirstName: "Momo",
 	LastName:  "",
 	Email:     "momo@mail.com",
 	Password:  []byte("test"),
 	IsActive:  true,
-	CreatedAt: time.Now(),
-	EmailVerification: models.EmailVerification{
-		Id:               uuid.New(),
+	EmailVerification: model.EmailVerification{
 		VerificationCode: 123456,
-		CreatedAt:        time.Now(),
 	},
 }
 
@@ -52,20 +51,20 @@ func setup() {
 	utils.NewOpts()
 	utils.Opts.JwtSecret = "secret"
 	utils.Opts.ApiKeySecret = "apiSecretKey1234"
-	userId, err := uuid.Parse("b39310ec-59f9-454e-b1dd-2bcc18e9994f")
+	merchantId, err := uuid.Parse("b39310ec-59f9-454e-b1dd-2bcc18e9994f")
 	if err != nil {
 		panic(err)
 	}
-	u.Id = userId
-	u.EmailVerification.UserId = userId
+	testMerchant.ID = merchantId
+	testMerchant.EmailVerification.MerchantId = merchantId
 }
 
-func findUserByEmailMock() repository.IUserRepository {
+func findMerchantByEmailMock() repository.IMerchantRepository {
 	mock, repo := NewMock()
 	row := sqlmock.NewRows([]string{"id", "first_name", "last_name", "email", "password", "is_active", "created_at"}).
-		AddRow(u.Id, u.FirstName, u.LastName, u.Email, u.Password, u.IsActive, u.CreatedAt)
+		AddRow(testMerchant.ID, testMerchant.FirstName, testMerchant.LastName, testMerchant.Email, testMerchant.Password, testMerchant.IsActive, testMerchant.CreatedAt)
 
-	mock.ExpectQuery("SELECT").WithArgs(u.Email).WillReturnRows(row)
+	mock.ExpectQuery("SELECT").WithArgs(testMerchant.Email).WillReturnRows(row)
 	return repo
 }
 
@@ -78,7 +77,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func NewMock() (sqlmock.Sqlmock, repository.IUserRepository) {
+func NewMock() (sqlmock.Sqlmock, repository.IMerchantRepository) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		log.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -89,7 +88,11 @@ func NewMock() (sqlmock.Sqlmock, repository.IUserRepository) {
 	})
 
 	gormDb, err := gorm.Open(dialector, &gorm.Config{})
-	return mock, &repository.UserRepository{DB: gormDb}
+	merchantRepository, err := repository.NewMerchantRepository(gormDb)
+	if err != nil {
+		return nil, nil
+	}
+	return mock, merchantRepository
 }
 
 func TestCreateJwtToken(t *testing.T) {
@@ -119,31 +122,31 @@ func TestDecodeJwtToken(t *testing.T) {
 	}
 }
 
-func TestGetUserByEmail(t *testing.T) {
-	repo := findUserByEmailMock()
-	user, err := getUserByEmail(u.Email, repo)
+func TestGetMerchantByEmail(t *testing.T) {
+	repo := findMerchantByEmailMock()
+	merchant, err := getMerchantByEmail(testMerchant.Email, repo)
 	if err != nil {
-		t.Fatalf("Cannot find user by email, got error %s", err.Error())
+		t.Fatalf("Cannot find merchant by email, got error %s", err.Error())
 	}
-	if user.Email != u.Email {
-		t.Errorf("Expected email %s, but got %s", u.Email, user.Email)
+	if merchant.Email != testMerchant.Email {
+		t.Errorf("Expected email %s, but got %s", testMerchant.Email, merchant.Email)
 	}
 }
 
-func TestCheckAuthorizationAndReturnUser(t *testing.T) {
-	repo := findUserByEmailMock()
-	token, err := createJwtToken(u.Email, time.Hour*1)
+func TestHandleAuthorization(t *testing.T) {
+	repo := findMerchantByEmailMock()
+	token, err := createJwtToken(testMerchant.Email, time.Hour*1)
 	if err != nil {
 		t.Errorf("")
 	}
 	bearer := "bearer " + token
-	user, err := checkAuthorizationAndReturnUser(bearer, repo)
+	merchant, err := handleAuthorization(bearer, repo)
 	if err != nil {
-		t.Fatalf("checkAuthorizationAndReturnUser: got error %s", err.Error())
+		t.Fatalf("handleAuthorization: got error %s", err.Error())
 	}
 
-	if user.Email != u.Email {
-		t.Errorf("Expected email %s, but got %s", u.Email, user.Email)
+	if merchant.Email != testMerchant.Email {
+		t.Errorf("Expected email %s, but got %s", testMerchant.Email, merchant.Email)
 	}
 }
 
@@ -159,38 +162,35 @@ func TestCreateVerificationCode(t *testing.T) {
 }
 
 func TestHandleVerification(t *testing.T) {
-	userId, _ := uuid.Parse("b39310ec-59f9-454e-b1dd-2bcc18e9994f")
+	merchantId, _ := uuid.Parse("b39310ec-59f9-454e-b1dd-2bcc18e9994f")
 	codeId, _ := uuid.Parse("b39310ec-59f9-454e-b1dd-000000000000")
-	usr := models.User{
-		Id:        userId,
+	merchant := model.Merchant{
+		Base:      model.Base{ID: merchantId},
 		FirstName: "hans",
 		LastName:  "meier",
 		Password:  []byte("pw"),
 		Email:     "test@mail.com",
 		IsActive:  true,
-		CreatedAt: time.Now(),
-		EmailVerification: models.EmailVerification{
-			Id:               codeId,
-			UserId:           userId,
+		EmailVerification: model.EmailVerification{
+			Base:             model.Base{ID: codeId},
+			MerchantId:       merchantId,
 			VerificationCode: 123456,
-			CreatedAt:        time.Now(),
 		},
 	}
-
 	mock, repo := NewMock()
 
 	mock.ExpectBegin()
-	mock.ExpectExec("UPDATE \"users\"").
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+	mock.ExpectExec("UPDATE \"merchants\"").
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	mock.ExpectQuery("INSERT INTO \"email_verifications\"").
-		WithArgs(userId, 123456, sqlmock.AnyArg(), codeId).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), merchantId, 123456, codeId).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
 
 	mock.ExpectCommit()
 
-	err := handleVerification(&usr, 123456, repo)
+	err := handleVerification(&merchant, 123456, repo)
 	if err != nil {
 		t.Error(err)
 	}
@@ -202,7 +202,8 @@ func TestHandleVerification(t *testing.T) {
 
 }
 
-func TestCreateUser(t *testing.T) {
+func TestCreateMerchant(t *testing.T) {
+	merchantId := uuid.New()
 	verificationCode := big.NewInt(123456)
 	encryptedPassword := []byte("password")
 	registerRequest := configApi.RegisterRequestDto{
@@ -215,23 +216,23 @@ func TestCreateUser(t *testing.T) {
 	mock, repo := NewMock()
 	mock.ExpectBegin()
 
-	mock.ExpectQuery("INSERT INTO \"users\"").
-		WithArgs(registerRequest.FirstName, registerRequest.LastName, registerRequest.Email, sqlmock.AnyArg(), false, sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+	mock.ExpectQuery("INSERT INTO \"merchants\"").
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), registerRequest.FirstName, registerRequest.LastName, registerRequest.Email, sqlmock.AnyArg(), false).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(merchantId))
 
 	mock.ExpectQuery("INSERT INTO \"email_verifications\"").
-		WithArgs(sqlmock.AnyArg(), verificationCode.Int64(), sqlmock.AnyArg()).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), merchantId, verificationCode.Int64()).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
 
 	mock.ExpectCommit()
 
-	user, err := createUser(verificationCode, registerRequest, encryptedPassword, repo)
+	merchant, err := createMerchant(verificationCode, registerRequest, encryptedPassword, repo)
 	if err != nil {
-		t.Fatalf("Error occured during createUser: %s", err.Error())
+		t.Fatalf("Error occured during createMerchant: %s", err.Error())
 	}
 
-	if user.Email != registerRequest.Email {
-		t.Errorf("Expected email %s, but got %s", registerRequest.Email, user.Email)
+	if merchant.Email != registerRequest.Email {
+		t.Errorf("Expected email %s, but got %s", registerRequest.Email, merchant.Email)
 	}
 }
 
@@ -264,7 +265,7 @@ func TestSendVerificationEmail(t *testing.T) {
 		},
 	}
 
-	err := sendVerificationEmail(*u, &httpClient)
+	err := sendVerificationEmail(testMerchant, &httpClient)
 	if err != nil {
 		t.Error(err)
 	}
@@ -272,12 +273,12 @@ func TestSendVerificationEmail(t *testing.T) {
 
 // TODO: improve test
 func TestHandleSecretApiKey(t *testing.T) {
-	key, _, err := handleSecretApiKey("trfertfw3", utils.Test, utils.Secret)
+	key, _, err := handleSecretApiKey("trfertfw3", enum.Test, enum.Secret)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if key.Mode != utils.Test.String() ||
-		key.KeyType != utils.Secret.String() ||
+	if key.Mode != enum.Test ||
+		key.KeyType != enum.Secret ||
 		key.IsActive != true {
 		t.Errorf("")
 	}
@@ -285,12 +286,12 @@ func TestHandleSecretApiKey(t *testing.T) {
 
 // TODO: improve test
 func TestHandlePublicApiKey(t *testing.T) {
-	key, err := handlePublicApiKey("trfertfw3", utils.Test, utils.Public)
+	key, err := handlePublicApiKey("trfertfw3", enum.Test, enum.Public)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if key.Mode != utils.Test.String() ||
-		key.KeyType != utils.Public.String() ||
+	if key.Mode != enum.Test ||
+		key.KeyType != enum.Public ||
 		key.IsActive != true {
 		t.Errorf("")
 	}
@@ -298,7 +299,8 @@ func TestHandlePublicApiKey(t *testing.T) {
 
 func TestGetCombinedApiKey(t *testing.T) {
 	secretKey := "supersecret"
-	key := models.ApiKey{Id: uuid.New()}
+	key := model.ApiKey{}
+	key.ID = uuid.New()
 	combinedApiKey, err := getCombinedApiKey(key, secretKey)
 	if err != nil {
 		t.Fatalf("getCombinedApiKey error: %s", err.Error())
@@ -308,7 +310,7 @@ func TestGetCombinedApiKey(t *testing.T) {
 		t.Fatalf("Decrypt error: %s", err.Error())
 	}
 
-	expected := key.Id.String() + "_" + secretKey
+	expected := key.ID.String() + "_" + secretKey
 	if expected != decrypt {
 		t.Errorf("expected combined key %s, but got %s", expected, decrypt)
 	}

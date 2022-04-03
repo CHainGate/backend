@@ -12,11 +12,13 @@ package configService
 import (
 	"context"
 	"errors"
-	"github.com/CHainGate/backend/internal/repository"
 	"net/http"
 
+	"github.com/CHainGate/backend/internal/repository"
+	"github.com/CHainGate/backend/pkg/enum"
+
 	"github.com/CHainGate/backend/configApi"
-	"github.com/CHainGate/backend/internal/models"
+	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/utils"
 )
 
@@ -33,12 +35,12 @@ func NewApiKeyApiService() configApi.ApiKeyApiServicer {
 
 // DeleteApiKey - delete api key
 func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization, repository.UserRepo)
+	merchant, err := handleAuthorization(authorization, repository.MerchantRepository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	err = repository.ApiKeyRepo.DeleteApiKey(user.Id, apiKeyId)
+	err = repository.ApiKeyRepository.Delete(merchant.ID, apiKeyId)
 	if err != nil {
 		return configApi.Response(http.StatusBadRequest, nil), err
 	}
@@ -47,22 +49,22 @@ func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, auth
 
 // GenerateApiKey - create new secret api key
 func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization, repository.UserRepo)
+	merchant, err := handleAuthorization(authorization, repository.MerchantRepository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	mode, ok := utils.ParseStringToModeEnum(apiKeyRequestDto.Mode)
+	mode, ok := enum.ParseStringToModeEnum(apiKeyRequestDto.Mode)
 	if !ok {
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
 	}
 
-	apiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(apiKeyRequestDto.KeyType)
+	apiKeyType, ok := enum.ParseStringToApiKeyTypeEnum(apiKeyRequestDto.KeyType)
 	if !ok {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
 	}
 
-	var key *models.ApiKey
+	var key *model.ApiKey
 
 	apiSecretKey, err := utils.GenerateApiKey()
 	if err != nil {
@@ -70,34 +72,34 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 	}
 
 	var combinedApiKey string
-	if apiKeyType == utils.Secret {
+	if apiKeyType == enum.Secret {
 		key, combinedApiKey, err = handleSecretApiKey(apiSecretKey, mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
 	}
 
-	if apiKeyType == utils.Public {
+	if apiKeyType == enum.Public {
 		key, err = handlePublicApiKey(apiSecretKey, mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
 	}
 
-	user.ApiKeys = append(user.ApiKeys, *key)
-	err = repository.UserRepo.UpdateUser(user)
+	merchant.ApiKeys = append(merchant.ApiKeys, *key)
+	err = repository.MerchantRepository.Update(merchant)
 	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("User could not be updated ")
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Merchant could not be updated ")
 	}
 
 	apiKeyDto := configApi.ApiKeyResponseDto{
-		Id:        key.Id.String(),
-		KeyType:   key.KeyType,
+		Id:        key.ID.String(),
+		KeyType:   key.KeyType.String(),
 		CreatedAt: key.CreatedAt,
 		Key:       key.ApiKey,
 	}
 
-	if apiKeyType == utils.Secret {
+	if apiKeyType == enum.Secret {
 		apiKeyDto.Key = combinedApiKey
 	}
 
@@ -106,22 +108,22 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 
 // GetApiKey - gets the api key
 func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
-	user, err := checkAuthorizationAndReturnUser(authorization, repository.UserRepo)
+	merchant, err := handleAuthorization(authorization, repository.MerchantRepository)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	enumMode, ok := utils.ParseStringToModeEnum(mode)
+	enumMode, ok := enum.ParseStringToModeEnum(mode)
 	if !ok {
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
 	}
 
-	enumApiKeyType, ok := utils.ParseStringToApiKeyTypeEnum(keyType)
+	enumApiKeyType, ok := enum.ParseStringToApiKeyTypeEnum(keyType)
 	if !ok {
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("api key type does not exist")
 	}
 
-	keys, err := repository.ApiKeyRepo.FindApiKeyByUserModeKeyType(user.Id, enumMode, enumApiKeyType)
+	keys, err := repository.ApiKeyRepository.FindByMerchantAndModeAndKeyType(merchant.ID, enumMode, enumApiKeyType)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -129,9 +131,9 @@ func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType str
 	var resultList []configApi.ApiKeyResponseDto
 	for _, item := range keys {
 		resultList = append(resultList, configApi.ApiKeyResponseDto{
-			Id:        item.Id.String(),
+			Id:        item.ID.String(),
 			Key:       item.ApiKey,
-			KeyType:   item.KeyType,
+			KeyType:   item.KeyType.String(),
 			CreatedAt: item.CreatedAt,
 		})
 	}

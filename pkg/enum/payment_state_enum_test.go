@@ -10,37 +10,37 @@ type StateEnumString struct {
 
 var stateEnumTests = []StateEnumString{
 	{
-		enum:   StateWaiting,
-		name:   "StateWaiting",
+		enum:   Waiting,
+		name:   "Waiting",
 		string: "waiting",
 	},
 	{
-		enum:   StatePartiallyPaid,
-		name:   "StatePartiallyPaid",
+		enum:   PartiallyPaid,
+		name:   "PartiallyPaid",
 		string: "partially_paid",
 	},
 	{
-		enum:   StatePaid,
+		enum:   Paid,
 		name:   "StatePaid",
 		string: "paid",
 	},
 	{
-		enum:   StateSending,
+		enum:   Sending,
 		name:   "StateSending",
 		string: "sending",
 	},
 	{
-		enum:   StateFinished,
-		name:   "StateFinished",
+		enum:   Finished,
+		name:   "Finished",
 		string: "finished",
 	},
 	{
-		enum:   StateExpired,
+		enum:   Expired,
 		name:   "StateExpired",
 		string: "expired",
 	},
 	{
-		enum:   StateFailed,
+		enum:   Failed,
 		name:   "StateFailed",
 		string: "failed",
 	},

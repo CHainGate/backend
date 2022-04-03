@@ -34,11 +34,11 @@ paths:
     post:
       tags:
         - authentication
-      summary: User registration
-      operationId: registerUser
+      summary: Merchant registration
+      operationId: registerMerchant
       responses:
         '201':
-          description: new user registred
+          description: new merchant registred
       requestBody:
         $ref: '#/components/requestBodies/RegisterRequestDto'
 
@@ -46,7 +46,7 @@ paths:
     get:
       tags:
         - authentication
-      summary: Verify user email
+      summary: Verify merchant email
       operationId: verifyEmail
       parameters:
         - in: query
@@ -286,7 +286,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ApiKeyRequestDto'
+            $ref: '#/components/schemas/ApiKeyRequestDTO'
   schemas:
     LoginRequestDto:
       title: Login Request DTO
@@ -393,7 +393,7 @@ components:
         created_at:
           type: string
           format: date-time
-    ApiKeyRequestDto:
+    ApiKeyRequestDTO:
       title: Api Key Request Dto
       type: object
       required:
@@ -458,7 +458,7 @@ components:
           type: number
           format: double
           nullable: true
-        payment_status:
+        payment_state:
           type: string
           enum:
             - waiting

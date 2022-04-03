@@ -12,9 +12,10 @@ package configService
 import (
 	"context"
 	"errors"
-	"github.com/CHainGate/backend/internal/repository"
 	"net/http"
 	"time"
+
+	"github.com/CHainGate/backend/internal/repository"
 
 	"github.com/CHainGate/backend/configApi"
 	"gorm.io/gorm"
@@ -35,20 +36,20 @@ const jwtDuration = time.Hour * 24
 
 // Login - Authenticate to chaingate
 func (s *AuthenticationApiService) Login(_ context.Context, loginRequestDto configApi.LoginRequestDto) (configApi.ImplResponse, error) {
-	user, err := getUserByEmail(loginRequestDto.Email, repository.UserRepo)
+	merchant, err := getMerchantByEmail(loginRequestDto.Email, repository.MerchantRepository)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return configApi.Response(http.StatusBadRequest, nil), errors.New("User or password wrong ")
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("Email or password wrong ")
 	}
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	err = canUserLogin(user, loginRequestDto.Password)
+	err = canMerchantLogin(merchant, loginRequestDto.Password)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), err
 	}
 
-	token, err := createJwtToken(user.Email, jwtDuration)
+	token, err := createJwtToken(merchant.Email, jwtDuration)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Token signing failed ")
 	}
@@ -58,7 +59,7 @@ func (s *AuthenticationApiService) Login(_ context.Context, loginRequestDto conf
 	return configApi.Response(http.StatusCreated, tokenDto), nil
 }
 
-// Logout - Logs out the user
+// Logout - Logs out the merchant
 func (s *AuthenticationApiService) Logout(_ context.Context) (configApi.ImplResponse, error) {
 	// TODO - update Logout with the required logic for this service method.
 	// Add api_authentication_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
@@ -69,12 +70,12 @@ func (s *AuthenticationApiService) Logout(_ context.Context) (configApi.ImplResp
 	return configApi.Response(http.StatusNotImplemented, nil), errors.New("Logout method not implemented")
 }
 
-// RegisterUser - User registration
-func (s *AuthenticationApiService) RegisterUser(_ context.Context, registerRequestDto configApi.RegisterRequestDto) (configApi.ImplResponse, error) {
+// RegisterMerchant - Merchant registration
+func (s *AuthenticationApiService) RegisterMerchant(_ context.Context, registerRequestDto configApi.RegisterRequestDto) (configApi.ImplResponse, error) {
 	//TODO: maybe use password validator https://github.com/wagslane/go-password-validator
 	encryptedPassword, err := encryptPassword(registerRequestDto.Password)
 	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register merchant ")
 	}
 
 	verificationCode, err := createVerificationCode()
@@ -82,15 +83,15 @@ func (s *AuthenticationApiService) RegisterUser(_ context.Context, registerReque
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	user, err := createUser(verificationCode, registerRequestDto, encryptedPassword, repository.UserRepo)
+	merchant, err := createMerchant(verificationCode, registerRequestDto, encryptedPassword, repository.MerchantRepository)
 	if err != nil {
-		if err.Error() == "ERROR: duplicate key value violates unique constraint \"users_email_key\" (SQLSTATE 23505)" {
+		if err.Error() == "ERROR: duplicate key value violates unique constraint \"merchants_email_key\" (SQLSTATE 23505)" {
 			return configApi.Response(http.StatusBadRequest, nil), errors.New("E-Mail already exists")
 		}
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register user ")
+		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register merchant ")
 	}
 
-	err = sendVerificationEmail(user, nil)
+	err = sendVerificationEmail(merchant, nil)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -98,14 +99,14 @@ func (s *AuthenticationApiService) RegisterUser(_ context.Context, registerReque
 	return configApi.Response(http.StatusNoContent, nil), nil
 }
 
-// VerifyEmail - Verify user email
+// VerifyEmail - Verify merchant email
 func (s *AuthenticationApiService) VerifyEmail(_ context.Context, email string, verificationCode int64) (configApi.ImplResponse, error) {
-	user, err := getUserByEmail(email, repository.UserRepo)
+	merchant, err := getMerchantByEmail(email, repository.MerchantRepository)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	err = handleVerification(user, verificationCode, repository.UserRepo)
+	err = handleVerification(merchant, verificationCode, repository.MerchantRepository)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
