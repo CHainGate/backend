@@ -1,4 +1,4 @@
-package utils
+package service
 
 import (
 	"encoding/hex"
@@ -23,7 +23,7 @@ var aesTest = AesTest{
 
 // Do not parallelize this test! Unless there is a way to mock aes to generate the same encryption text
 func TestEncrypt(t *testing.T) {
-	encryptedMessage, err := Encrypt(aesTest.key, aesTest.clearTextMessage)
+	encryptedMessage, err := encrypt(aesTest.key, aesTest.clearTextMessage)
 	if err != nil {
 		t.Errorf("Message encryption failed. Error: %s", err.Error())
 	}
@@ -32,7 +32,7 @@ func TestEncrypt(t *testing.T) {
 
 // Do not parallelize this test! Unless there is a way to mock aes to generate the same encryption text
 func TestDecrypt(t *testing.T) {
-	decryptedMessage, err := Decrypt(aesTest.key, aesTest.encryptedMessage)
+	decryptedMessage, err := decrypt(aesTest.key, aesTest.encryptedMessage)
 	if err != nil {
 		t.Fatalf("Message decryption failed. Error: %s", err.Error())
 	}
@@ -42,11 +42,11 @@ func TestDecrypt(t *testing.T) {
 }
 
 func TestCreateSalt(t *testing.T) {
-	salt1, err := CreateSalt()
+	salt1, err := createSalt()
 	if err != nil {
 		t.Errorf("Create salt failed. Error: %s", err.Error())
 	}
-	salt2, err := CreateSalt()
+	salt2, err := createSalt()
 	if err != nil {
 		t.Errorf("Create salt failed. Error: %s", err.Error())
 	}
@@ -66,11 +66,11 @@ func TestCreateSalt(t *testing.T) {
 }
 
 func TestGenerateApiKey(t *testing.T) {
-	key1, err := GenerateApiKey()
+	key1, err := generateApiKey()
 	if err != nil {
 		t.Errorf("Generate api key failed. Error: %s", err.Error())
 	}
-	key2, err := GenerateApiKey()
+	key2, err := generateApiKey()
 	if err != nil {
 		t.Errorf("Generate api key failed. Error: %s", err.Error())
 	}
@@ -89,17 +89,17 @@ func TestGenerateApiKey(t *testing.T) {
 
 // TODO: add some more tests
 func TestScryptPassword(t *testing.T) {
-	salt, err := CreateSalt()
+	salt, err := createSalt()
 	if err != nil {
 		t.Errorf("Create salt failed. Error: %s", err.Error())
 	}
 
-	password1, err := ScryptPassword("my-secret-password", salt)
+	password1, err := scryptPassword("my-secret-password", salt)
 	if err != nil {
 		t.Errorf("Sycrpt failed. Error: %s", err.Error())
 	}
 
-	password2, err := ScryptPassword("my-secret-password2", salt)
+	password2, err := scryptPassword("my-secret-password2", salt)
 	if err != nil {
 		t.Errorf("Sycrpt failed. Error: %s", err.Error())
 	}

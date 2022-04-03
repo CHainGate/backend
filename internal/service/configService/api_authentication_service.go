@@ -12,46 +12,29 @@ package configService
 import (
 	"context"
 	"errors"
+	"github.com/CHainGate/backend/internal/service"
 	"net/http"
-	"time"
-
-	"github.com/CHainGate/backend/internal/repository"
 
 	"github.com/CHainGate/backend/configApi"
-	"gorm.io/gorm"
 )
 
 // AuthenticationApiService is a service that implements the logic for the AuthenticationApiServicer
 // This service should implement the business logic for every endpoint for the AuthenticationApi API.
 // Include any external packages or services that will be required by this service.
 type AuthenticationApiService struct {
+	authenticationService service.IAuthenticationService
 }
 
 // NewAuthenticationApiService creates a default api service
-func NewAuthenticationApiService() configApi.AuthenticationApiServicer {
-	return &AuthenticationApiService{}
+func NewAuthenticationApiService(authenticationService service.IAuthenticationService) configApi.AuthenticationApiServicer {
+	return &AuthenticationApiService{authenticationService}
 }
-
-const jwtDuration = time.Hour * 24
 
 // Login - Authenticate to chaingate
 func (s *AuthenticationApiService) Login(_ context.Context, loginRequestDto configApi.LoginRequestDto) (configApi.ImplResponse, error) {
-	merchant, err := getMerchantByEmail(loginRequestDto.Email, repository.MerchantRepository)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return configApi.Response(http.StatusBadRequest, nil), errors.New("Email or password wrong ")
-	}
+	token, err := s.authenticationService.HandleLogin(loginRequestDto.Email, loginRequestDto.Password)
 	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	err = canMerchantLogin(merchant, loginRequestDto.Password)
-	if err != nil {
-		return configApi.Response(http.StatusForbidden, nil), err
-	}
-
-	token, err := createJwtToken(merchant.Email, jwtDuration)
-	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Token signing failed ")
+		return configApi.ImplResponse{}, err
 	}
 
 	tokenDto := configApi.TokenResponseDto{Token: token}
@@ -72,18 +55,7 @@ func (s *AuthenticationApiService) Logout(_ context.Context) (configApi.ImplResp
 
 // RegisterMerchant - Merchant registration
 func (s *AuthenticationApiService) RegisterMerchant(_ context.Context, registerRequestDto configApi.RegisterRequestDto) (configApi.ImplResponse, error) {
-	//TODO: maybe use password validator https://github.com/wagslane/go-password-validator
-	encryptedPassword, err := encryptPassword(registerRequestDto.Password)
-	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register merchant ")
-	}
-
-	verificationCode, err := createVerificationCode()
-	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	merchant, err := createMerchant(verificationCode, registerRequestDto, encryptedPassword, repository.MerchantRepository)
+	err := s.authenticationService.CreateMerchant(registerRequestDto)
 	if err != nil {
 		if err.Error() == "ERROR: duplicate key value violates unique constraint \"merchants_email_key\" (SQLSTATE 23505)" {
 			return configApi.Response(http.StatusBadRequest, nil), errors.New("E-Mail already exists")
@@ -91,22 +63,12 @@ func (s *AuthenticationApiService) RegisterMerchant(_ context.Context, registerR
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register merchant ")
 	}
 
-	err = sendVerificationEmail(merchant, nil)
-	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), err
-	}
-
 	return configApi.Response(http.StatusNoContent, nil), nil
 }
 
-// VerifyEmail - Verify merchant email
+// VerifyEmail - Verify merchant E-Mail
 func (s *AuthenticationApiService) VerifyEmail(_ context.Context, email string, verificationCode int64) (configApi.ImplResponse, error) {
-	merchant, err := getMerchantByEmail(email, repository.MerchantRepository)
-	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	err = handleVerification(merchant, verificationCode, repository.MerchantRepository)
+	err := s.authenticationService.HandleVerification(email, verificationCode)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}

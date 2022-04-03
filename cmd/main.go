@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/CHainGate/backend/internal/service"
 	"log"
 	"net/http"
 	"strconv"
@@ -25,11 +26,12 @@ func main() {
 		panic(err)
 	}
 
+	authService := service.NewAuthenticationService(repository.MerchantRepository, repository.ApiKeyRepository)
 	// config api
-	ApiKeyApiService := configService.NewApiKeyApiService()
+	ApiKeyApiService := configService.NewApiKeyApiService(authService, repository.ApiKeyRepository, repository.MerchantRepository)
 	ApiKeyApiController := configApi.NewApiKeyApiController(ApiKeyApiService)
 
-	AuthenticationApiService := configService.NewAuthenticationApiService()
+	AuthenticationApiService := configService.NewAuthenticationApiService(authService)
 	AuthenticationApiController := configApi.NewAuthenticationApiController(AuthenticationApiService)
 
 	LoggingApiService := configService.NewLoggingApiService()
@@ -41,13 +43,15 @@ func main() {
 	configRouter := configApi.NewRouter(ApiKeyApiController, AuthenticationApiController, LoggingApiController, WalletApiController)
 
 	// public api
-	PaymentApiService := publicService.NewPaymentApiService()
+	publicPaymentService := service.NewPublicPaymentService()
+	PaymentApiService := publicService.NewPaymentApiService(publicPaymentService, authService)
 	PaymentApiController := publicApi.NewPaymentApiController(PaymentApiService)
 
 	publicRouter := publicApi.NewRouter(PaymentApiController)
 
 	// internal api
-	PaymentUpdateApiService := internalService.NewPaymentUpdateApiService()
+	internalPaymentService := service.NewInternalPaymentService(repository.PaymentRepository)
+	PaymentUpdateApiService := internalService.NewPaymentUpdateApiService(internalPaymentService)
 	PaymentUpdateApiController := internalApi.NewPaymentUpdateApiController(PaymentUpdateApiService)
 
 	internalRouter := internalApi.NewRouter(PaymentUpdateApiController)

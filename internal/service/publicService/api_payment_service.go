@@ -11,36 +11,31 @@ package publicService
 
 import (
 	"context"
-	"errors"
-	"net/http"
-	"strings"
-
-	"github.com/CHainGate/backend/internal/repository"
+	"github.com/CHainGate/backend/internal/service"
 	"github.com/CHainGate/backend/pkg/enum"
-	"github.com/google/uuid"
-
-	"github.com/CHainGate/backend/ethClientApi"
-
-	"github.com/CHainGate/backend/internal/model"
-	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/publicApi"
+	"net/http"
 )
 
 // PaymentApiService is a service that implements the logic for the PaymentApiServicer
 // This service should implement the business logic for every endpoint for the PaymentApi API.
 // Include any external packages or services that will be required by this service.
 type PaymentApiService struct {
+	authenticationService service.IAuthenticationService
+	publicApiService      service.IPublicPaymentService
 }
 
 // NewPaymentApiService creates a default api service
-func NewPaymentApiService() publicApi.PaymentApiServicer {
-	return &PaymentApiService{}
+func NewPaymentApiService(
+	publicApiService service.IPublicPaymentService,
+	authenticationService service.IAuthenticationService,
+) publicApi.PaymentApiServicer {
+	return &PaymentApiService{authenticationService, publicApiService}
 }
 
 // NewPayment - Create a new payment
 func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymentRequestDto publicApi.PaymentRequestDto) (publicApi.ImplResponse, error) {
-	// only merchant data without preload, if needed add preload
-	merchant, apiKey, err := verifyApiKeyAuthentication(xAPIKEY, repository.MerchantRepository)
+	merchant, apiKey, err := s.authenticationService.HandleApiAuthentication(xAPIKEY)
 	if err != nil {
 		if err.Error() == "not authorized" {
 			return publicApi.Response(http.StatusForbidden, nil), err
@@ -48,14 +43,13 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	resp, err := ethClientCall(paymentRequestDto.PriceCurrency, paymentRequestDto.PriceAmount, "wallet_add", apiKey.Mode)
-	if err != nil {
-		return publicApi.Response(http.StatusInternalServerError, nil), err
-	}
+	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(paymentRequestDto.PriceCurrency)
+	if !ok {
 
-	payment, err := handleEthClientCallResponse(resp, apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
+	}
+	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, "wallet_add", apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
 	if err != nil {
-		return publicApi.Response(http.StatusInternalServerError, nil), err
+		return publicApi.ImplResponse{}, err
 	}
 
 	paymentResponseDto := publicApi.PaymentResponseDto{
@@ -72,107 +66,4 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		UpdatedAt:     payment.UpdatedAt,
 	}
 	return publicApi.Response(http.StatusCreated, paymentResponseDto), nil
-}
-
-func verifyApiKeyAuthentication(receivedApiKey string, repo repository.IMerchantRepository) (*model.Merchant, *model.ApiKey, error) {
-	decryptedApiKey, err := utils.Decrypt([]byte(utils.Opts.ApiKeySecret), receivedApiKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	apiKeyDetails := strings.Split(decryptedApiKey, "_")
-	apiKeyId := apiKeyDetails[0]
-	apiKeySecret := apiKeyDetails[1]
-
-	apiKey, err := repository.ApiKeyRepository.FindById(apiKeyId)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if apiKey.KeyType == enum.Secret {
-		encryptedKey, err := utils.ScryptPassword(apiKeySecret, apiKey.Salt)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if encryptedKey != apiKey.SecretKey {
-			return nil, nil, errors.New("not authorized")
-		}
-	}
-
-	if apiKey.KeyType == enum.Public {
-		if apiKeySecret != apiKey.SecretKey {
-			return nil, nil, errors.New("not authorized")
-		}
-	}
-
-	merchant, err := repo.FindById(apiKey.MerchantId)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return merchant, apiKey, nil
-}
-
-func ethClientCall(priceCurrency string, priceAmount float64, wallet string, mode enum.Mode) (*ethClientApi.PaymentResponse, error) {
-	paymentRequest := *ethClientApi.NewPaymentRequest(priceCurrency, priceAmount, wallet, mode.String())
-	configuration := ethClientApi.NewConfiguration()
-	apiClient := ethClientApi.NewAPIClient(configuration)
-	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequest(paymentRequest).Execute()
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-func handleEthClientCallResponse(resp *ethClientApi.PaymentResponse, mode enum.Mode, callbackUrl string, merchant *model.Merchant) (*model.Payment, error) {
-	blockChainPaymentId, err := uuid.Parse(resp.PaymentId)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: get wallet from db
-	/*	wallet := models.Wallet{
-		Mode: mode.String(),
-		Currency: "eth",
-		Address: "asdwar88asd",
-	}*/
-
-	paymentState, ok := enum.ParseStringToStateEnum(resp.PaymentStatus)
-	if !ok {
-		return nil, err
-	}
-	initialState := model.PaymentState{
-		PaymentState: paymentState,
-		PayAmount:    resp.PayAmount,
-		ActuallyPaid: 0,
-	}
-
-	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(resp.PriceCurrency)
-	if !ok {
-		return nil, err
-	}
-	payCurrency, ok := enum.ParseStringToCryptoCurrencyEnum(resp.PayCurrency)
-	if !ok {
-		return nil, err
-	}
-	payment := model.Payment{
-		Mode:                mode,
-		PriceAmount:         resp.PriceAmount,
-		PriceCurrency:       priceCurrency,
-		PayCurrency:         payCurrency,
-		BlockchainPaymentId: blockChainPaymentId,
-		PaymentStates:       []model.PaymentState{initialState},
-		CallbackUrl:         callbackUrl,
-		PayAddress:          resp.PayAddress, //TODO: currently not set from eth service
-		Wallet:              merchant.Wallets[0],
-	}
-	payment.ID = uuid.New()
-
-	merchant.Payments = append(merchant.Payments, payment)
-	err = repository.MerchantRepository.Update(merchant)
-	if err != nil {
-		return nil, err
-	}
-
-	return &payment, nil
 }

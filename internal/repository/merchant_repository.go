@@ -41,7 +41,7 @@ func (r *merchantRepository) FindById(id uuid.UUID) (*model.Merchant, error) {
 
 func (r *merchantRepository) FindByEmail(email string) (*model.Merchant, error) {
 	var merchant model.Merchant
-	result := r.DB.Where("email = ?", email).First(&merchant)
+	result := r.DB.Preload("EmailVerification").Where("email = ?", email).First(&merchant)
 	if result.Error != nil {
 		return nil, result.Error
 	}

@@ -11,119 +11,29 @@ package internalService
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/hex"
-	"encoding/json"
-	"io"
-	"net/http"
-	"time"
-
-	"github.com/CHainGate/backend/internal/model"
-	"github.com/CHainGate/backend/internal/repository"
-	"github.com/CHainGate/backend/pkg/enum"
-
+	"github.com/CHainGate/backend/internal/service"
 	"github.com/CHainGate/backend/internalApi"
-	"github.com/CHainGate/backend/proxyClientApi"
+	"net/http"
 )
 
 // PaymentUpdateApiService is a service that implements the logic for the PaymentUpdateApiServicer
 // This service should implement the business logic for every endpoint for the PaymentUpdateApi API.
 // Include any external packages or services that will be required by this service.
 type PaymentUpdateApiService struct {
+	internalPaymentService service.IInternalPaymentService
 }
 
 // NewPaymentUpdateApiService creates a default api service
-func NewPaymentUpdateApiService() internalApi.PaymentUpdateApiServicer {
-	return &PaymentUpdateApiService{}
+func NewPaymentUpdateApiService(internalPaymentService service.IInternalPaymentService) internalApi.PaymentUpdateApiServicer {
+	return &PaymentUpdateApiService{internalPaymentService}
 }
 
 // UpdatePayment - update payment
 func (s *PaymentUpdateApiService) UpdatePayment(_ context.Context, payment internalApi.PaymentUpdateDto) (internalApi.ImplResponse, error) {
-	currentPayment, err := updatePayment(payment, repository.PaymentRepository)
-	if err != nil {
-		return internalApi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	err = callWebhook(currentPayment)
+	err := s.internalPaymentService.HandlePaymentUpdate(payment)
 	if err != nil {
 		return internalApi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return internalApi.Response(http.StatusOK, nil), nil
-}
-
-func updatePayment(payment internalApi.PaymentUpdateDto, repo repository.IPaymentRepository) (*model.Payment, error) {
-	currentPayment, err := repo.FindByBlockchainIdAndCurrency(payment.PaymentId, payment.PayCurrency)
-	if err != nil {
-		return nil, err
-	}
-
-	paymentState, ok := enum.ParseStringToStateEnum(payment.PaymentState)
-	if !ok {
-		return nil, err
-	}
-	newPaymentState := model.PaymentState{
-		PaymentState: paymentState,
-		ActuallyPaid: *payment.ActuallyPaid,
-		PayAmount:    payment.PayAmount,
-	}
-
-	currentPayment.PaymentStates = append(currentPayment.PaymentStates, newPaymentState)
-	currentPayment.UpdatedAt = time.Now()
-
-	err = repo.Update(currentPayment)
-	if err != nil {
-		return nil, err
-	}
-
-	currentPayment, err = repo.FindByBlockchainIdAndCurrency(payment.PaymentId, payment.PayCurrency)
-	if err != nil {
-		return nil, err
-	}
-	return currentPayment, nil
-}
-
-func callWebhook(payment *model.Payment) error {
-	currentState := payment.PaymentStates[0] //states are sorted
-	body := proxyClientApi.WebHookBody{
-		Data: proxyClientApi.WebHookData{
-			PaymentId:     payment.ID.String(),
-			PayAddress:    payment.PayAddress,
-			PriceAmount:   payment.PriceAmount,
-			PriceCurrency: payment.PriceCurrency.String(),
-			PayAmount:     currentState.PayAmount,
-			PayCurrency:   payment.PayCurrency.String(),
-			ActuallyPaid:  *proxyClientApi.NewNullableFloat64(&currentState.ActuallyPaid),
-			PaymentStatus: currentState.PaymentState.String(),
-			CreatedAt:     payment.CreatedAt,
-			UpdatedAt:     payment.UpdatedAt,
-		},
-	}
-
-	signature, err := createSignature(body.Data)
-	if err != nil {
-		return err
-	}
-	body.Signature = signature
-
-	webhook := *proxyClientApi.NewWebHookRequestDto(payment.CallbackUrl, body)
-	configuration := proxyClientApi.NewConfiguration()
-	apiClient := proxyClientApi.NewAPIClient(configuration)
-	_, err = apiClient.WebhookApi.SendWebhook(context.Background()).WebHookRequestDto(webhook).Execute()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func createSignature(data proxyClientApi.WebHookData) (string, error) {
-	mac := hmac.New(sha512.New, []byte("supersecret"))
-	jsonData, err := json.Marshal(data)
-	_, err = io.WriteString(mac, string(jsonData))
-	if err != nil {
-		return "", err
-	}
-	expectedMAC := mac.Sum(nil)
-	return hex.EncodeToString(expectedMAC), nil
 }

@@ -12,6 +12,7 @@ package configService
 import (
 	"context"
 	"errors"
+	"github.com/CHainGate/backend/internal/service"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/repository"
@@ -19,28 +20,34 @@ import (
 
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/model"
-	"github.com/CHainGate/backend/internal/utils"
 )
 
 // ApiKeyApiService is a service that implements the logic for the ApiKeyApiServicer
 // This service should implement the business logic for every endpoint for the ApiKeyApi API.
 // Include any external packages or services that will be required by this service.
 type ApiKeyApiService struct {
+	authenticationService service.IAuthenticationService
+	apiKeyRepository      repository.IApiKeyRepository
+	merchantRepository    repository.IMerchantRepository
 }
 
 // NewApiKeyApiService creates a default api service
-func NewApiKeyApiService() configApi.ApiKeyApiServicer {
-	return &ApiKeyApiService{}
+func NewApiKeyApiService(
+	authenticationService service.IAuthenticationService,
+	apiKeyRepository repository.IApiKeyRepository,
+	merchantRepository repository.IMerchantRepository,
+) configApi.ApiKeyApiServicer {
+	return &ApiKeyApiService{authenticationService, apiKeyRepository, merchantRepository}
 }
 
 // DeleteApiKey - delete api key
 func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, authorization string) (configApi.ImplResponse, error) {
-	merchant, err := handleAuthorization(authorization, repository.MerchantRepository)
+	merchant, err := s.authenticationService.HandleJwtAuthentication(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
-	err = repository.ApiKeyRepository.Delete(merchant.ID, apiKeyId)
+	err = s.apiKeyRepository.Delete(merchant.ID, apiKeyId)
 	if err != nil {
 		return configApi.Response(http.StatusBadRequest, nil), err
 	}
@@ -49,7 +56,7 @@ func (s *ApiKeyApiService) DeleteApiKey(_ context.Context, apiKeyId string, auth
 
 // GenerateApiKey - create new secret api key
 func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization string, apiKeyRequestDto configApi.ApiKeyRequestDto) (configApi.ImplResponse, error) {
-	merchant, err := handleAuthorization(authorization, repository.MerchantRepository)
+	merchant, err := s.authenticationService.HandleJwtAuthentication(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
@@ -65,29 +72,23 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 	}
 
 	var key *model.ApiKey
-
-	apiSecretKey, err := utils.GenerateApiKey()
-	if err != nil {
-		return configApi.Response(http.StatusInternalServerError, nil), err
-	}
-
 	var combinedApiKey string
 	if apiKeyType == enum.Secret {
-		key, combinedApiKey, err = handleSecretApiKey(apiSecretKey, mode, apiKeyType)
+		key, combinedApiKey, err = s.authenticationService.CreateSecretApiKey(mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
 	}
 
 	if apiKeyType == enum.Public {
-		key, err = handlePublicApiKey(apiSecretKey, mode, apiKeyType)
+		key, err = s.authenticationService.CreatePublicApiKey(mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
 	}
 
 	merchant.ApiKeys = append(merchant.ApiKeys, *key)
-	err = repository.MerchantRepository.Update(merchant)
+	err = s.merchantRepository.Update(merchant)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Merchant could not be updated ")
 	}
@@ -108,7 +109,7 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 
 // GetApiKey - gets the api key
 func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
-	merchant, err := handleAuthorization(authorization, repository.MerchantRepository)
+	merchant, err := s.authenticationService.HandleJwtAuthentication(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
@@ -123,7 +124,7 @@ func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType str
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("api key type does not exist")
 	}
 
-	keys, err := repository.ApiKeyRepository.FindByMerchantAndModeAndKeyType(merchant.ID, enumMode, enumApiKeyType)
+	keys, err := s.apiKeyRepository.FindByMerchantAndModeAndKeyType(merchant.ID, enumMode, enumApiKeyType)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
