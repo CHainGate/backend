@@ -6,10 +6,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	MerchantRepository IMerchantRepository
-)
-
 type merchantRepository struct {
 	DB *gorm.DB
 }

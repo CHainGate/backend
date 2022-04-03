@@ -21,7 +21,8 @@ type Merchant struct {
 	FirstName         string
 	LastName          string
 	Email             string `gorm:"unique"`
-	Password          []byte
+	Password          string
+	Salt              []byte
 	IsActive          bool
 	EmailVerification EmailVerification
 	Wallets           []Wallet

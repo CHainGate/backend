@@ -14,10 +14,11 @@ type IPublicPaymentService interface {
 }
 
 type publicPaymentService struct {
+	merchantRepository repository.IMerchantRepository
 }
 
-func NewPublicPaymentService() IPublicPaymentService {
-	return &publicPaymentService{}
+func NewPublicPaymentService(merchantRepository repository.IMerchantRepository) IPublicPaymentService {
+	return &publicPaymentService{merchantRepository}
 }
 
 func (s *publicPaymentService) HandleNewPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode, callback string, merchant *model.Merchant) (*model.Payment, error) {
@@ -26,25 +27,14 @@ func (s *publicPaymentService) HandleNewPayment(priceCurrency enum.FiatCurrency,
 		return nil, err
 	}
 
-	payment, err := handleEthClientResponse(paymentResponse, mode, callback, merchant)
+	payment, err := s.handleEthClientResponse(paymentResponse, mode, callback, merchant)
 	if err != nil {
 		return nil, err
 	}
 	return payment, nil
 }
 
-func createEthPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode) (*ethClientApi.PaymentResponse, error) {
-	paymentRequest := *ethClientApi.NewPaymentRequest(priceCurrency.String(), priceAmount, wallet, mode.String())
-	configuration := ethClientApi.NewConfiguration()
-	apiClient := ethClientApi.NewAPIClient(configuration)
-	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequest(paymentRequest).Execute()
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-func handleEthClientResponse(resp *ethClientApi.PaymentResponse, mode enum.Mode, callbackUrl string, merchant *model.Merchant) (*model.Payment, error) {
+func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.PaymentResponse, mode enum.Mode, callbackUrl string, merchant *model.Merchant) (*model.Payment, error) {
 	blockChainPaymentId, err := uuid.Parse(resp.PaymentId)
 	if err != nil {
 		return nil, err
@@ -88,10 +78,21 @@ func handleEthClientResponse(resp *ethClientApi.PaymentResponse, mode enum.Mode,
 	payment.ID = uuid.New()
 
 	merchant.Payments = append(merchant.Payments, payment)
-	err = repository.MerchantRepository.Update(merchant)
+	err = s.merchantRepository.Update(merchant)
 	if err != nil {
 		return nil, err
 	}
 
 	return &payment, nil
+}
+
+func createEthPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode) (*ethClientApi.PaymentResponse, error) {
+	paymentRequest := *ethClientApi.NewPaymentRequest(priceCurrency.String(), priceAmount, wallet, mode.String())
+	configuration := ethClientApi.NewConfiguration()
+	apiClient := ethClientApi.NewAPIClient(configuration)
+	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequest(paymentRequest).Execute()
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }

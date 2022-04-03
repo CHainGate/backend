@@ -21,14 +21,14 @@ import (
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
-	err := repository.SetupDatabase()
+	merchantRepo, apiKeyRepo, paymentRepo, err := repository.SetupDatabase()
 	if err != nil {
 		panic(err)
 	}
 
-	authService := service.NewAuthenticationService(repository.MerchantRepository, repository.ApiKeyRepository)
+	authService := service.NewAuthenticationService(merchantRepo, apiKeyRepo)
 	// config api
-	ApiKeyApiService := configService.NewApiKeyApiService(authService, repository.ApiKeyRepository, repository.MerchantRepository)
+	ApiKeyApiService := configService.NewApiKeyApiService(authService, apiKeyRepo, merchantRepo)
 	ApiKeyApiController := configApi.NewApiKeyApiController(ApiKeyApiService)
 
 	AuthenticationApiService := configService.NewAuthenticationApiService(authService)
@@ -43,14 +43,14 @@ func main() {
 	configRouter := configApi.NewRouter(ApiKeyApiController, AuthenticationApiController, LoggingApiController, WalletApiController)
 
 	// public api
-	publicPaymentService := service.NewPublicPaymentService()
+	publicPaymentService := service.NewPublicPaymentService(merchantRepo)
 	PaymentApiService := publicService.NewPaymentApiService(publicPaymentService, authService)
 	PaymentApiController := publicApi.NewPaymentApiController(PaymentApiService)
 
 	publicRouter := publicApi.NewRouter(PaymentApiController)
 
 	// internal api
-	internalPaymentService := service.NewInternalPaymentService(repository.PaymentRepository)
+	internalPaymentService := service.NewInternalPaymentService(paymentRepo)
 	PaymentUpdateApiService := internalService.NewPaymentUpdateApiService(internalPaymentService)
 	PaymentUpdateApiController := internalApi.NewPaymentUpdateApiController(PaymentUpdateApiService)
 

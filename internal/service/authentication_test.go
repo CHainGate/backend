@@ -27,7 +27,7 @@ var testMerchant = &model.Merchant{
 	FirstName: "Momo",
 	LastName:  "",
 	Email:     "momo@mail.com",
-	Password:  []byte("test"),
+	Password:  "test",
 	IsActive:  true,
 	EmailVerification: model.EmailVerification{
 		VerificationCode: 123456,
@@ -182,7 +182,7 @@ func TestHandleVerification(t *testing.T) {
 		Base:      model.Base{ID: merchantId},
 		FirstName: "hans",
 		LastName:  "meier",
-		Password:  []byte("pw"),
+		Password:  "pw",
 		Email:     "test@mail.com",
 		IsActive:  true,
 		EmailVerification: model.EmailVerification{

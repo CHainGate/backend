@@ -34,7 +34,7 @@ func NewAuthenticationApiService(authenticationService service.IAuthenticationSe
 func (s *AuthenticationApiService) Login(_ context.Context, loginRequestDto configApi.LoginRequestDto) (configApi.ImplResponse, error) {
 	token, err := s.authenticationService.HandleLogin(loginRequestDto.Email, loginRequestDto.Password)
 	if err != nil {
-		return configApi.ImplResponse{}, err
+		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	tokenDto := configApi.TokenResponseDto{Token: token}
@@ -44,12 +44,6 @@ func (s *AuthenticationApiService) Login(_ context.Context, loginRequestDto conf
 
 // Logout - Logs out the merchant
 func (s *AuthenticationApiService) Logout(_ context.Context) (configApi.ImplResponse, error) {
-	// TODO - update Logout with the required logic for this service method.
-	// Add api_authentication_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
-
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
-
 	return configApi.Response(http.StatusNotImplemented, nil), errors.New("Logout method not implemented")
 }
 

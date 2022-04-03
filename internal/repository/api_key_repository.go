@@ -7,10 +7,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	ApiKeyRepository IApiKeyRepository
-)
-
 type apiKeyRepository struct {
 	DB *gorm.DB
 }

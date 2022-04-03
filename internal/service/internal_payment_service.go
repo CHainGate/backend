@@ -96,7 +96,7 @@ func callWebhook(payment *model.Payment) error {
 }
 
 func createSignature(data proxyClientApi.WebHookData) (string, error) {
-	//TODO: secret in opts
+	//TODO: use merchant secret api key to sign, first we need to save the api key on our side
 	mac := hmac.New(sha512.New, []byte("supersecret"))
 	jsonData, err := json.Marshal(data)
 	_, err = io.WriteString(mac, string(jsonData))

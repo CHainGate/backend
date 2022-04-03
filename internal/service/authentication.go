@@ -12,7 +12,6 @@ import (
 	"github.com/CHainGate/backend/proxyClientApi"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"math/big"
 	"net/http"
@@ -199,7 +198,12 @@ func (s *authenticationService) HandleVerification(email string, verificationCod
 
 func (s *authenticationService) CreateMerchant(registerRequestDto configApi.RegisterRequestDto) error {
 	//TODO: maybe use password validator https://github.com/wagslane/go-password-validator
-	encryptedPassword, err := encryptPassword(registerRequestDto.Password)
+	salt, err := createSalt()
+	if err != nil {
+		return err
+	}
+
+	encryptedPassword, err := scryptPassword(registerRequestDto.Password, salt)
 	if err != nil {
 		return errors.New("Cannot register merchant ")
 	}
@@ -218,6 +222,7 @@ func (s *authenticationService) CreateMerchant(registerRequestDto configApi.Regi
 		LastName:          registerRequestDto.LastName,
 		Email:             registerRequestDto.Email,
 		Password:          encryptedPassword,
+		Salt:              salt,
 		EmailVerification: emailVerification,
 		IsActive:          false,
 	}
@@ -262,16 +267,14 @@ func canMerchantLogin(merchant *model.Merchant, password string) error {
 	if !merchant.IsActive {
 		return errors.New("Merchant not active ")
 	}
-	err := bcrypt.CompareHashAndPassword(merchant.Password, []byte(password))
+	encryptedPassword, err := scryptPassword(password, merchant.Salt)
 	if err != nil {
+		return err
+	}
+	if encryptedPassword != merchant.Password {
 		return errors.New("Wrong username or password ")
 	}
 	return nil
-}
-
-//TODO bcrypt to scrypt and test
-func encryptPassword(password string) ([]byte, error) {
-	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 }
 
 func createVerificationCode() (*big.Int, error) {

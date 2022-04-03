@@ -10,24 +10,24 @@ import (
 	"github.com/CHainGate/backend/internal/utils"
 )
 
-func SetupDatabase() error {
+func SetupDatabase() (IMerchantRepository, IApiKeyRepository, IPaymentRepository, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", utils.Opts.DbHost, utils.Opts.DbUser, utils.Opts.DbPassword, utils.Opts.DbName, utils.Opts.DbPort)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
 
 	err = autoMigrateDB(db)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
 
-	err = createRepositories(db)
+	merchantRepo, apiKeyRepo, paymentRepo, err := createRepositories(db)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
 
-	return nil
+	return merchantRepo, apiKeyRepo, paymentRepo, nil
 }
 
 func autoMigrateDB(db *gorm.DB) error {
@@ -58,23 +58,20 @@ func autoMigrateDB(db *gorm.DB) error {
 	return nil
 }
 
-func createRepositories(db *gorm.DB) error {
+func createRepositories(db *gorm.DB) (IMerchantRepository, IApiKeyRepository, IPaymentRepository, error) {
 	merchantRepo, err := NewMerchantRepository(db)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
-	MerchantRepository = merchantRepo
 
 	paymentRepo, err := NewPaymentRepository(db)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
-	PaymentRepository = paymentRepo
 
 	apiKeyRepo, err := NewApiKeyRepository(db)
 	if err != nil {
-		return err
+		return nil, nil, nil, err
 	}
-	ApiKeyRepository = apiKeyRepo
-	return nil
+	return merchantRepo, apiKeyRepo, paymentRepo, nil
 }

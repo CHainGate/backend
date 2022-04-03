@@ -5,10 +5,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	PaymentRepository IPaymentRepository
-)
-
 type paymentRepository struct {
 	DB *gorm.DB
 }
