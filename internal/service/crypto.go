@@ -1,4 +1,4 @@
-package utils
+package service
 
 import (
 	"crypto/aes"
@@ -6,9 +6,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"io"
-
 	"golang.org/x/crypto/scrypt"
+	"io"
 )
 
 const (
@@ -17,7 +16,7 @@ const (
 )
 
 // Encrypt https://gist.github.com/mickelsonm/e1bf365a149f3fe59119
-func Encrypt(key []byte, message string) (string, error) {
+func encrypt(key []byte, message string) (string, error) {
 	plainText := []byte(message)
 
 	block, err := aes.NewCipher(key)
@@ -42,7 +41,7 @@ func Encrypt(key []byte, message string) (string, error) {
 }
 
 // Decrypt https://gist.github.com/mickelsonm/e1bf365a149f3fe59119
-func Decrypt(key []byte, secureMessage string) (string, error) {
+func decrypt(key []byte, secureMessage string) (string, error) {
 	cipherText, err := base64.StdEncoding.DecodeString(secureMessage)
 	if err != nil {
 		return "", err
@@ -71,7 +70,7 @@ func Decrypt(key []byte, secureMessage string) (string, error) {
 	return decodedMessage, nil
 }
 
-func ScryptPassword(password string, salt []byte) (string, error) {
+func scryptPassword(password string, salt []byte) (string, error) {
 	encryptedKey, err := scrypt.Key([]byte(password), salt, 32768, 8, 1, 32)
 	if err != nil {
 		return "", err
@@ -80,7 +79,7 @@ func ScryptPassword(password string, salt []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(encryptedKey), nil
 }
 
-func CreateSalt() ([]byte, error) {
+func createSalt() ([]byte, error) {
 	salt := make([]byte, PwSaltBytes)
 	_, err := io.ReadFull(rand.Reader, salt)
 	if err != nil {
@@ -89,7 +88,7 @@ func CreateSalt() ([]byte, error) {
 	return salt, nil
 }
 
-func GenerateApiKey() (string, error) {
+func generateApiKey() (string, error) {
 	randomBytes := make([]byte, ApiKeyBytes)
 	_, err := rand.Read(randomBytes)
 	if err != nil {

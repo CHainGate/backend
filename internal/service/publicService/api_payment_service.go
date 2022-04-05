@@ -11,35 +11,31 @@ package publicService
 
 import (
 	"context"
-	"errors"
-	"github.com/CHainGate/backend/internal/repository"
-	"github.com/google/uuid"
-	"net/http"
-	"strings"
-	"time"
-
-	"github.com/CHainGate/backend/ethClientApi"
-
-	"github.com/CHainGate/backend/internal/models"
-	"github.com/CHainGate/backend/internal/utils"
+	"github.com/CHainGate/backend/internal/service"
+	"github.com/CHainGate/backend/pkg/enum"
 	"github.com/CHainGate/backend/publicApi"
+	"net/http"
 )
 
 // PaymentApiService is a service that implements the logic for the PaymentApiServicer
 // This service should implement the business logic for every endpoint for the PaymentApi API.
 // Include any external packages or services that will be required by this service.
 type PaymentApiService struct {
+	authenticationService service.IAuthenticationService
+	publicApiService      service.IPublicPaymentService
 }
 
 // NewPaymentApiService creates a default api service
-func NewPaymentApiService() publicApi.PaymentApiServicer {
-	return &PaymentApiService{}
+func NewPaymentApiService(
+	publicApiService service.IPublicPaymentService,
+	authenticationService service.IAuthenticationService,
+) publicApi.PaymentApiServicer {
+	return &PaymentApiService{authenticationService, publicApiService}
 }
 
 // NewPayment - Create a new payment
 func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymentRequestDto publicApi.PaymentRequestDto) (publicApi.ImplResponse, error) {
-	// only user data without preload, if needed add preload
-	user, apiKey, err := verifyApiKeyAuthentication(xAPIKEY, repository.UserRepo)
+	merchant, apiKey, err := s.authenticationService.HandleApiAuthentication(xAPIKEY)
 	if err != nil {
 		if err.Error() == "not authorized" {
 			return publicApi.Response(http.StatusForbidden, nil), err
@@ -47,132 +43,27 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	mode, ok := utils.ParseStringToModeEnum(apiKey.Mode)
+	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(paymentRequestDto.PriceCurrency)
 	if !ok {
-		return publicApi.Response(http.StatusInternalServerError, nil), err
-	}
 
-	resp, err := ethClientCall(paymentRequestDto.PriceCurrency, paymentRequestDto.PriceAmount, "wallet_add", mode)
-	if err != nil {
-		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
-
-	payment, err := handleEthClientCallResponse(resp, mode, paymentRequestDto.CallbackUrl, user)
+	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, "wallet_add", apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
 	if err != nil {
-		return publicApi.Response(http.StatusInternalServerError, nil), err
+		return publicApi.ImplResponse{}, err
 	}
 
 	paymentResponseDto := publicApi.PaymentResponseDto{
-		Id:            payment.Id.String(),
+		Id:            payment.ID.String(),
 		PayAddress:    payment.PayAddress,
 		PriceAmount:   payment.PriceAmount,
-		PriceCurrency: payment.PriceCurrency,
-		PayAmount:     payment.PaymentStatus[0].PayAmount,
-		PayCurrency:   payment.PayCurrency,
-		ActuallyPaid:  &payment.PaymentStatus[0].ActuallyPaid,
+		PriceCurrency: payment.PriceCurrency.String(),
+		PayAmount:     payment.PaymentStates[0].PayAmount,
+		PayCurrency:   payment.PayCurrency.String(),
+		ActuallyPaid:  &payment.PaymentStates[0].ActuallyPaid,
 		CallbackUrl:   payment.CallbackUrl,
-		PaymentStatus: payment.PaymentStatus[0].PaymentStatus,
+		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
 		CreatedAt:     payment.CreatedAt,
 		UpdatedAt:     payment.UpdatedAt,
 	}
 	return publicApi.Response(http.StatusCreated, paymentResponseDto), nil
-}
-
-func verifyApiKeyAuthentication(receivedApiKey string, repo repository.IUserRepository) (*models.User, *models.ApiKey, error) {
-	decryptedApiKey, err := utils.Decrypt([]byte(utils.Opts.ApiKeySecret), receivedApiKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	apiKeyDetails := strings.Split(decryptedApiKey, "_")
-	apiKeyId := apiKeyDetails[0]
-	apiKeySecret := apiKeyDetails[1]
-
-	apiKey, err := repository.ApiKeyRepo.FindApiKeyById(apiKeyId)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	apiKeyMode, ok := utils.ParseStringToApiKeyTypeEnum(apiKey.KeyType)
-	if !ok {
-		return nil, nil, errors.New("Wrong api key mode ")
-	}
-
-	if apiKeyMode == utils.Secret {
-		encryptedKey, err := utils.ScryptPassword(apiKeySecret, apiKey.Salt)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if encryptedKey != apiKey.SecretKey {
-			return nil, nil, errors.New("not authorized")
-		}
-	}
-
-	if apiKeyMode == utils.Public {
-		if apiKeySecret != apiKey.SecretKey {
-			return nil, nil, errors.New("not authorized")
-		}
-	}
-
-	user, err := repo.FindById(apiKey.UserId)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return user, apiKey, nil
-}
-
-func ethClientCall(priceCurrency string, priceAmount float64, wallet string, mode utils.Mode) (*ethClientApi.PaymentResponse, error) {
-	paymentRequest := *ethClientApi.NewPaymentRequest(priceCurrency, priceAmount, wallet, mode.String())
-	configuration := ethClientApi.NewConfiguration()
-	apiClient := ethClientApi.NewAPIClient(configuration)
-	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequest(paymentRequest).Execute()
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
-func handleEthClientCallResponse(resp *ethClientApi.PaymentResponse, mode utils.Mode, callbackUrl string, user *models.User) (*models.Payment, error) {
-	blockChainPaymentId, err := uuid.Parse(resp.PaymentId)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: get wallet from db
-	/*	wallet := models.Wallet{
-		Mode: mode.String(),
-		Currency: "eth",
-		Address: "asdwar88asd",
-	}*/
-
-	initialState := models.PaymentStatus{
-		PaymentStatus: resp.PaymentStatus,
-		PayAmount:     resp.PayAmount,
-		ActuallyPaid:  0,
-		CreatedAt:     time.Now(),
-	}
-
-	payment := models.Payment{
-		Id:                  uuid.New(),
-		Mode:                mode.String(),
-		PriceAmount:         resp.PriceAmount,
-		PriceCurrency:       resp.PriceCurrency,
-		PayCurrency:         resp.PayCurrency,
-		BlockchainPaymentId: blockChainPaymentId,
-		PaymentStatus:       []models.PaymentStatus{initialState},
-		CallbackUrl:         callbackUrl,
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
-		PayAddress:          resp.PayAddress, //TODO: currently not set from eth service
-		Wallet:              user.Wallets[0],
-	}
-
-	user.Payments = append(user.Payments, payment)
-	err = repository.UserRepo.UpdateUser(user)
-	if err != nil {
-		return nil, err
-	}
-
-	return &payment, nil
 }

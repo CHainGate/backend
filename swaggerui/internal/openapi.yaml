@@ -39,7 +39,7 @@ components:
         - pay_amount
         - pay_currency
         - actually_paid
-        - payment_status
+        - payment_state
       properties:
         payment_id:
           type: string
@@ -56,7 +56,7 @@ components:
           type: number
           format: double
           nullable: true
-        payment_status:
+        payment_state:
           type: string
           enum:
             - waiting
