@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -227,12 +228,12 @@ func (s *authenticationService) CreateMerchant(registerRequestDto configApi.Regi
 		IsActive:          false,
 	}
 
-	err = s.merchantRepository.Create(&merchant)
+	err = sendVerificationEmail(&merchant, nil)
 	if err != nil {
 		return err
 	}
 
-	err = sendVerificationEmail(&merchant, nil)
+	err = s.merchantRepository.Create(&merchant)
 	if err != nil {
 		return err
 	}
@@ -250,13 +251,22 @@ func createJwtToken(issuer string, duration time.Duration) (string, error) {
 }
 
 func sendVerificationEmail(merchant *model.Merchant, client *http.Client) error {
-	url := utils.Opts.EmailVerificationUrl + "?email=" + merchant.Email + "&code=" + strconv.FormatUint(merchant.EmailVerification.VerificationCode, 10)
-	content := "Please Verify your E-Mail: " + url
+	baseUrl, err := url.Parse(utils.Opts.EmailVerificationUrl)
+	if err != nil {
+		return err
+	}
+	params := url.Values{}
+	params.Add("email", merchant.Email)
+	params.Add("code", strconv.FormatUint(merchant.EmailVerification.VerificationCode, 10))
+
+	baseUrl.RawQuery = params.Encode()
+
+	content := "Please Verify your E-Mail: " + baseUrl.String()
 	email := *proxyClientApi.NewEmailRequestDto(merchant.FirstName, merchant.Email, "Verify your E-Mail", content)
 	configuration := NewConfiguration()
 	configuration.HTTPClient = client
 	apiClient := proxyClientApi.NewAPIClient(configuration)
-	_, err := apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
+	_, err = apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
 	if err != nil {
 		return err
 	}
