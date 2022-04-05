@@ -258,7 +258,7 @@ func sendVerificationEmail(merchant *model.Merchant, client *http.Client) error 
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err := apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
 	if err != nil {
-		return errors.New("Verification E-Mail could not be sent ")
+		return err
 	}
 	return nil
 }
@@ -317,7 +317,7 @@ func NewConfiguration() *proxyClientApi.Configuration {
 	cfg := &proxyClientApi.Configuration{
 		DefaultHeader: make(map[string]string),
 		UserAgent:     "OpenAPI-Generator/1.0.0/go",
-		Debug:         false,
+		Debug:         true,
 		Servers: proxyClientApi.ServerConfigurations{
 			{
 				URL:         utils.Opts.ProxyBaseUrl,
