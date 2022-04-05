@@ -32,23 +32,23 @@ type Merchant struct {
 
 type EmailVerification struct {
 	Base
-	MerchantId       uuid.UUID
+	MerchantId       uuid.UUID `gorm:"type:uuid"`
 	VerificationCode uint64
 }
 
 type Wallet struct {
 	Base
-	MerchantId uuid.UUID
-	Currency   enum.CryptoCurrency
-	Mode       enum.Mode
+	MerchantId uuid.UUID           `gorm:"type:uuid"`
+	Currency   enum.CryptoCurrency `gorm:"type:varchar"`
+	Mode       enum.Mode           `gorm:"type:varchar"`
 	Address    string
 }
 
 type ApiKey struct {
 	Base
-	MerchantId uuid.UUID       `gorm:"index:api_key_index,unique"`
-	Mode       enum.Mode       `gorm:"index:api_key_index,unique"`
-	KeyType    enum.ApiKeyType `gorm:"index:api_key_index,unique"`
+	MerchantId uuid.UUID       `gorm:"index:api_key_index,unique;type:uuid"`
+	Mode       enum.Mode       `gorm:"index:api_key_index,unique;type:varchar"`
+	KeyType    enum.ApiKeyType `gorm:"index:api_key_index,unique;type:varchar"`
 	ApiKey     string
 	SecretKey  string
 	Salt       []byte
@@ -57,14 +57,14 @@ type ApiKey struct {
 
 type Payment struct {
 	Base
-	BlockchainPaymentId uuid.UUID
-	MerchantId          uuid.UUID
+	BlockchainPaymentId uuid.UUID `gorm:"type:uuid"`
+	MerchantId          uuid.UUID `gorm:"type:uuid"`
 	Wallet              Wallet
-	WalletId            uuid.UUID
-	Mode                enum.Mode
-	PriceAmount         float64 `gorm:"type:numeric"`
-	PriceCurrency       enum.FiatCurrency
-	PayCurrency         enum.CryptoCurrency
+	WalletId            uuid.UUID           `gorm:"type:uuid"`
+	Mode                enum.Mode           `gorm:"type:varchar"`
+	PriceAmount         float64             `gorm:"type:numeric"`
+	PriceCurrency       enum.FiatCurrency   `gorm:"type:varchar"`
+	PayCurrency         enum.CryptoCurrency `gorm:"type:varchar"`
 	PayAddress          string
 	CallbackUrl         string
 	PaymentStates       []PaymentState
@@ -72,8 +72,8 @@ type Payment struct {
 
 type PaymentState struct {
 	Base
-	PaymentId    uuid.UUID
-	PayAmount    float64 `gorm:"type:numeric"`
-	ActuallyPaid float64 `gorm:"type:numeric"`
-	PaymentState enum.State
+	PaymentId    uuid.UUID  `gorm:"type:uuid"`
+	PayAmount    float64    `gorm:"type:numeric"`
+	ActuallyPaid float64    `gorm:"type:numeric"`
+	PaymentState enum.State `gorm:"type:varchar"`
 }

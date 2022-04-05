@@ -253,7 +253,7 @@ func sendVerificationEmail(merchant *model.Merchant, client *http.Client) error 
 	url := utils.Opts.EmailVerificationUrl + "?email=" + merchant.Email + "&code=" + strconv.FormatUint(merchant.EmailVerification.VerificationCode, 10)
 	content := "Please Verify your E-Mail: " + url
 	email := *proxyClientApi.NewEmailRequestDto(merchant.FirstName, merchant.Email, "Verify your E-Mail", content)
-	configuration := proxyClientApi.NewConfiguration()
+	configuration := NewConfiguration()
 	configuration.HTTPClient = client
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err := apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
@@ -311,4 +311,20 @@ func getApiKeyHint(key string) string {
 	apiKeyBeginning := key[0:4]
 	apiKeyEnding := key[len(key)-4:]
 	return apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
+}
+
+func NewConfiguration() *proxyClientApi.Configuration {
+	cfg := &proxyClientApi.Configuration{
+		DefaultHeader: make(map[string]string),
+		UserAgent:     "OpenAPI-Generator/1.0.0/go",
+		Debug:         false,
+		Servers: proxyClientApi.ServerConfigurations{
+			{
+				URL:         utils.Opts.ProxyBaseUrl,
+				Description: "No description provided",
+			},
+		},
+		OperationServers: map[string]proxyClientApi.ServerConfigurations{},
+	}
+	return cfg
 }
