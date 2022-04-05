@@ -205,7 +205,7 @@ func (s *authenticationService) CreateMerchant(registerRequestDto configApi.Regi
 
 	encryptedPassword, err := scryptPassword(registerRequestDto.Password, salt)
 	if err != nil {
-		return errors.New("Cannot register merchant ")
+		return err
 	}
 
 	verificationCode, err := createVerificationCode()
