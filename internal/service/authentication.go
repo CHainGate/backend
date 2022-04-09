@@ -4,6 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"math/big"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/repository"
@@ -13,12 +20,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"math/big"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const jwtDuration = time.Hour * 24

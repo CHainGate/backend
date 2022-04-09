@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/CHainGate/backend/internal/service"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/CHainGate/backend/internal/service"
 
 	"github.com/CHainGate/backend/internal/repository"
 
@@ -40,7 +41,10 @@ func main() {
 	WalletApiService := configService.NewWalletApiService()
 	WalletApiController := configApi.NewWalletApiController(WalletApiService)
 
-	configRouter := configApi.NewRouter(ApiKeyApiController, AuthenticationApiController, LoggingApiController, WalletApiController)
+	ConfigApiService := configService.NewConfigApiService(authService)
+	ConfigApiController := configApi.NewConfigApiController(ConfigApiService)
+
+	configRouter := configApi.NewRouter(ApiKeyApiController, AuthenticationApiController, LoggingApiController, WalletApiController, ConfigApiController)
 
 	// public api
 	publicPaymentService := service.NewPublicPaymentService(merchantRepo)

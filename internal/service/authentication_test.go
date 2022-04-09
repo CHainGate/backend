@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/utils"
@@ -13,11 +19,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
-	"net/http"
-	"os"
-	"testing"
-	"time"
 )
 
 var service IAuthenticationService

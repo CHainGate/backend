@@ -7,11 +7,33 @@ info:
   version: 1.0.0
   title: Config OpenAPI
 tags:
+  - name: config
   - name: authentication
   - name: wallet
   - name: api-key
   - name: logging
 paths:
+  /config:
+    get:
+      tags:
+        - config
+      summary: Get the configuration
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: header
+          name: authorization
+          schema:
+            type: string
+      operationId: getConfig
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponseDto'
+
   /login:
     post:
       tags:
@@ -288,6 +310,14 @@ components:
           schema:
             $ref: '#/components/schemas/ApiKeyRequestDTO'
   schemas:
+    ConfigResponseDto:
+      title: Config Response DTO
+      type: object
+      properties:
+        supportedCryptoCurrencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/currency'
     LoginRequestDto:
       title: Login Request DTO
       type: object
@@ -471,3 +501,11 @@ components:
         created_at:
           type: string
           format: date-time
+    currency:
+      title: Currency
+      type: object
+      properties:
+        name:
+          type: string
+        shortName:
+          type: string

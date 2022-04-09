@@ -11,10 +11,11 @@ package publicService
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/CHainGate/backend/internal/service"
 	"github.com/CHainGate/backend/pkg/enum"
 	"github.com/CHainGate/backend/publicApi"
-	"net/http"
 )
 
 // PaymentApiService is a service that implements the logic for the PaymentApiServicer

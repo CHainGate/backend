@@ -12,8 +12,9 @@ package configService
 import (
 	"context"
 	"errors"
-	"github.com/CHainGate/backend/internal/service"
 	"net/http"
+
+	"github.com/CHainGate/backend/internal/service"
 
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/pkg/enum"
