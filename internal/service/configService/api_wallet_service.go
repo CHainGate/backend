@@ -14,6 +14,12 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/CHainGate/backend/internal/model"
+	"github.com/CHainGate/backend/internal/repository"
+	"github.com/CHainGate/backend/internal/service"
+	"github.com/CHainGate/backend/pkg/enum"
+	"github.com/google/uuid"
+
 	"github.com/CHainGate/backend/configApi"
 )
 
@@ -21,54 +27,87 @@ import (
 // This service should implement the business logic for every endpoint for the WalletApi API.
 // Include any external packages or services that will be required by this service.
 type WalletApiService struct {
+	authenticationService service.IAuthenticationService
+	merchantRepository    repository.IMerchantRepository
 }
 
 // NewWalletApiService creates a default api service
-func NewWalletApiService() configApi.WalletApiServicer {
-	return &WalletApiService{}
+func NewWalletApiService(
+	authenticationService service.IAuthenticationService,
+	merchantRepository repository.IMerchantRepository,
+) configApi.WalletApiServicer {
+	return &WalletApiService{authenticationService, merchantRepository}
 }
 
 // AddWallet - add new wallet address
-func (s *WalletApiService) AddWallet(ctx context.Context, walletRequestDto configApi.WalletRequestDto) (configApi.ImplResponse, error) {
-	// TODO - update AddWallet with the required logic for this service method.
-	// Add api_wallet_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *WalletApiService) AddWallet(_ context.Context, authorization string, walletRequestDto configApi.WalletRequestDto) (configApi.ImplResponse, error) {
+	merchant, err := s.authenticationService.HandleJwtAuthentication(authorization)
+	if err != nil {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
+	}
 
-	//TODO: Uncomment the next line to return response Response(201, Wallet{}) or use other options such as http.Ok ...
-	//return Response(201, Wallet{}), nil
+	mode, ok := enum.ParseStringToModeEnum(walletRequestDto.Mode)
+	if !ok {
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	}
+	currency, ok := enum.ParseStringToCryptoCurrencyEnum(walletRequestDto.Currency)
+	if !ok {
 
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("AddWallet method not implemented")
+	}
+	newWallet := model.Wallet{
+		Base:     model.Base{ID: uuid.New()},
+		Currency: currency,
+		Address:  walletRequestDto.Address,
+		Mode:     mode,
+	}
+
+	merchant.Wallets = append(merchant.Wallets, newWallet)
+	err = s.merchantRepository.Update(merchant)
+	if err != nil {
+		return configApi.Response(http.StatusNotImplemented, nil), err
+	}
+
+	response := configApi.WalletResponseDto{
+		Id:       newWallet.ID.String(),
+		Address:  newWallet.Address,
+		Mode:     newWallet.Mode.String(),
+		Currency: newWallet.Currency.String(),
+	}
+	return configApi.Response(http.StatusCreated, response), nil
 }
 
 // DeleteWallet - delete wallet
-func (s *WalletApiService) DeleteWallet(ctx context.Context, walletId string) (configApi.ImplResponse, error) {
-	// TODO - update DeleteWallet with the required logic for this service method.
-	// Add api_wallet_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *WalletApiService) DeleteWallet(ctx context.Context, walletId string, authorization string) (configApi.ImplResponse, error) {
+	_, err := s.authenticationService.HandleJwtAuthentication(authorization)
+	if err != nil {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	err = s.merchantRepository.DeleteWalletById(walletId)
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	//TODO: Uncomment the next line to return response Response(400, {}) or use other options such as http.Ok ...
-	//return Response(400, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
-
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("DeleteWallet method not implemented")
+	return configApi.Response(http.StatusOK, nil), nil
 }
 
 // GetWallets - get wallets
-func (s *WalletApiService) GetWallets(ctx context.Context, mode string) (configApi.ImplResponse, error) {
-	// TODO - update GetWallets with the required logic for this service method.
-	// Add api_wallet_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *WalletApiService) GetWallets(ctx context.Context, mode string, authorization string) (configApi.ImplResponse, error) {
+	merchant, err := s.authenticationService.HandleJwtAuthentication(authorization)
+	if err != nil {
+		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, []Wallet{}) or use other options such as http.Ok ...
-	//return Response(200, []Wallet{}), nil
+	result := make([]configApi.WalletResponseDto, 0)
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	for _, wallet := range merchant.Wallets {
+		result = append(result, configApi.WalletResponseDto{
+			Id:       wallet.ID.String(),
+			Mode:     wallet.Mode.String(),
+			Currency: wallet.Currency.String(),
+			Address:  wallet.Address,
+		})
+	}
 
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("GetWallets method not implemented")
+	return configApi.Response(http.StatusOK, result), nil
 }

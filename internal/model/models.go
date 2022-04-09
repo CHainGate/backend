@@ -38,9 +38,9 @@ type EmailVerification struct {
 
 type Wallet struct {
 	Base
-	MerchantId uuid.UUID           `gorm:"type:uuid"`
-	Currency   enum.CryptoCurrency `gorm:"type:varchar"`
-	Mode       enum.Mode           `gorm:"type:varchar"`
+	MerchantId uuid.UUID `gorm:"type:uuid"`
+	Currency   enum.CryptoCurrency
+	Mode       enum.Mode
 	Address    string
 }
 

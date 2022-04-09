@@ -12,10 +12,11 @@ package configService
 import (
 	"context"
 	"errors"
+	"net/http"
+
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/service"
 	"github.com/CHainGate/backend/pkg/enum"
-	"net/http"
 )
 
 // ConfigApiService is a service that implements the logic for the ConfigApiServicer

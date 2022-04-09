@@ -106,6 +106,10 @@ paths:
            enum:
             - test
             - main
+       - in: header
+         name: authorization
+         schema:
+           type: string
       responses:
         '200':
           description: operation successful
@@ -124,6 +128,11 @@ paths:
       operationId: addWallet
       security:
         - bearerAuth: []
+      parameters:
+        - in: header
+          name: authorization
+          schema:
+            type: string
       responses:
         '201':
           description: new wallet created
@@ -149,6 +158,10 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: header
+          name: authorization
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses: 
