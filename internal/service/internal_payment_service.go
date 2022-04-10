@@ -28,7 +28,11 @@ func NewInternalPaymentService(paymentRepository repository.IPaymentRepository) 
 }
 
 func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.PaymentUpdateDto) error {
-	currentPayment, err := s.paymentRepository.FindByBlockchainIdAndCurrency(payment.PaymentId, payment.PayCurrency)
+	payCurrency, ok := enum.ParseStringToCryptoCurrencyEnum(payment.PayCurrency)
+	if !ok {
+
+	}
+	currentPayment, err := s.paymentRepository.FindByBlockchainIdAndCurrency(payment.PaymentId, payCurrency)
 	if err != nil {
 		return err
 	}
@@ -50,7 +54,7 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 		return err
 	}
 
-	currentPayment, err = s.paymentRepository.FindByBlockchainIdAndCurrency(payment.PaymentId, payment.PayCurrency)
+	currentPayment, err = s.paymentRepository.FindByBlockchainIdAndCurrency(payment.PaymentId, payCurrency)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/CHainGate/backend/internal/model"
+	"github.com/CHainGate/backend/pkg/enum"
 	"gorm.io/gorm"
 )
 
@@ -10,7 +11,7 @@ type paymentRepository struct {
 }
 
 type IPaymentRepository interface {
-	FindByBlockchainIdAndCurrency(id string, currency string) (*model.Payment, error)
+	FindByBlockchainIdAndCurrency(id string, currency enum.CryptoCurrency) (*model.Payment, error)
 	Update(payment *model.Payment) error
 }
 
@@ -18,7 +19,7 @@ func NewPaymentRepository(db *gorm.DB) (IPaymentRepository, error) {
 	return &paymentRepository{db}, nil
 }
 
-func (r *paymentRepository) FindByBlockchainIdAndCurrency(id string, currency string) (*model.Payment, error) {
+func (r *paymentRepository) FindByBlockchainIdAndCurrency(id string, currency enum.CryptoCurrency) (*model.Payment, error) {
 	var payment model.Payment
 	result := r.DB.Preload("PaymentStates", func(db *gorm.DB) *gorm.DB {
 		return db.Order("payment_states.created_at DESC")
