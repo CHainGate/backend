@@ -12,8 +12,9 @@ package configService
 import (
 	"context"
 	"errors"
-	"github.com/CHainGate/backend/internal/service"
 	"net/http"
+
+	"github.com/CHainGate/backend/internal/service"
 
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/pkg/enum"
@@ -72,9 +73,8 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 	}
 
 	var key *model.ApiKey
-	var combinedApiKey string
 	if apiKeyType == enum.Secret {
-		key, combinedApiKey, err = s.authenticationService.CreateSecretApiKey(mode, apiKeyType)
+		key, err = s.authenticationService.CreateSecretApiKey(mode, apiKeyType)
 		if err != nil {
 			return configApi.Response(http.StatusInternalServerError, nil), err
 		}
@@ -100,10 +100,6 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		Key:       key.ApiKey,
 	}
 
-	if apiKeyType == enum.Secret {
-		apiKeyDto.Key = combinedApiKey
-	}
-
 	return configApi.Response(http.StatusCreated, apiKeyDto), nil
 }
 
@@ -124,20 +120,20 @@ func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType str
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("api key type does not exist")
 	}
 
-	keys, err := s.apiKeyRepository.FindByMerchantAndModeAndKeyType(merchant.ID, enumMode, enumApiKeyType)
+	key, err := s.apiKeyRepository.FindByMerchantAndModeAndKeyType(merchant.ID, enumMode, enumApiKeyType)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
-
-	var resultList []configApi.ApiKeyResponseDto
-	for _, item := range keys {
-		resultList = append(resultList, configApi.ApiKeyResponseDto{
-			Id:        item.ID.String(),
-			Key:       item.ApiKey,
-			KeyType:   item.KeyType.String(),
-			CreatedAt: item.CreatedAt,
-		})
+	if key.ApiKey == "" {
+		return configApi.Response(http.StatusNoContent, nil), nil
 	}
 
-	return configApi.Response(http.StatusOK, resultList), nil
+	result := configApi.ApiKeyResponseDto{
+		Id:        key.ID.String(),
+		Key:       key.ApiKey,
+		KeyType:   key.KeyType.String(),
+		CreatedAt: key.CreatedAt,
+	}
+
+	return configApi.Response(http.StatusOK, result), nil
 }

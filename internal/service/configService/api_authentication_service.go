@@ -12,8 +12,9 @@ package configService
 import (
 	"context"
 	"errors"
-	"github.com/CHainGate/backend/internal/service"
 	"net/http"
+
+	"github.com/CHainGate/backend/internal/service"
 
 	"github.com/CHainGate/backend/configApi"
 )
@@ -54,7 +55,7 @@ func (s *AuthenticationApiService) RegisterMerchant(_ context.Context, registerR
 		if err.Error() == "ERROR: duplicate key value violates unique constraint \"merchants_email_key\" (SQLSTATE 23505)" {
 			return configApi.Response(http.StatusBadRequest, nil), errors.New("E-Mail already exists")
 		}
-		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Cannot register merchant ")
+		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return configApi.Response(http.StatusNoContent, nil), nil

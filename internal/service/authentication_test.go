@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/utils"
@@ -13,11 +19,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
-	"net/http"
-	"os"
-	"testing"
-	"time"
 )
 
 var service IAuthenticationService
@@ -148,6 +149,7 @@ func TestHandleAuthorization(t *testing.T) {
 
 	mock.ExpectQuery("SELECT (.+) FROM \"merchants\"").WithArgs(testMerchant.Email).WillReturnRows(merchantRow)
 	mock.ExpectQuery("SELECT (.+) FROM \"email_verifications\"").WithArgs(testMerchant.ID).WillReturnRows(verificationRow)
+	mock.ExpectQuery("SELECT (.+) FROM \"wallets\"").WithArgs(testMerchant.ID).WillReturnRows(sqlmock.NewRows([]string{""}))
 
 	token, err := createJwtToken(testMerchant.Email, time.Hour*1)
 	if err != nil {
@@ -199,6 +201,7 @@ func TestHandleVerification(t *testing.T) {
 
 	mock.ExpectQuery("SELECT (.+) FROM \"merchants\"").WithArgs(merchant.Email).WillReturnRows(merchantRow)
 	mock.ExpectQuery("SELECT (.+) FROM \"email_verifications\"").WithArgs(merchant.ID).WillReturnRows(verificationRow)
+	mock.ExpectQuery("SELECT (.+) FROM \"wallets\"").WithArgs(testMerchant.ID).WillReturnRows(sqlmock.NewRows([]string{""}))
 
 	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE \"merchants\"").
@@ -266,7 +269,7 @@ func TestSendVerificationEmail(t *testing.T) {
 			Name:    "Momo",
 			EmailTo: "momo@mail.com",
 			Subject: "Verify your E-Mail",
-			Content: "Please Verify your E-Mail: ?email=momo@mail.com&code=123456",
+			Content: "Please Verify your E-Mail: ?code=123456&email=momo%40mail.com",
 		}
 
 		var actually proxyClientApi.EmailRequestDto
@@ -297,13 +300,12 @@ func TestSendVerificationEmail(t *testing.T) {
 
 // TODO: improve test
 func TestHandleSecretApiKey(t *testing.T) {
-	key, _, err := service.CreateSecretApiKey(enum.Test, enum.Secret)
+	key, err := service.CreateSecretApiKey(enum.Test, enum.Secret)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if key.Mode != enum.Test ||
-		key.KeyType != enum.Secret ||
-		key.IsActive != true {
+		key.KeyType != enum.Secret {
 		t.Errorf("")
 	}
 }
@@ -315,8 +317,7 @@ func TestHandlePublicApiKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	if key.Mode != enum.Test ||
-		key.KeyType != enum.Public ||
-		key.IsActive != true {
+		key.KeyType != enum.Public {
 		t.Errorf("")
 	}
 }

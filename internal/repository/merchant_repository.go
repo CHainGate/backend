@@ -15,7 +15,7 @@ type IMerchantRepository interface {
 	FindByEmail(email string) (*model.Merchant, error)
 	Create(merchant *model.Merchant) error
 	Update(merchant *model.Merchant) error
-	CreateWallet(wallet *model.Wallet) error
+	DeleteWalletById(id string) error
 }
 
 func NewMerchantRepository(db *gorm.DB) (IMerchantRepository, error) {
@@ -37,7 +37,7 @@ func (r *merchantRepository) FindById(id uuid.UUID) (*model.Merchant, error) {
 
 func (r *merchantRepository) FindByEmail(email string) (*model.Merchant, error) {
 	var merchant model.Merchant
-	result := r.DB.Preload("EmailVerification").Where("email = ?", email).First(&merchant)
+	result := r.DB.Preload("EmailVerification").Preload("Wallets").Where("email = ?", email).First(&merchant)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -60,8 +60,8 @@ func (r *merchantRepository) Update(merchant *model.Merchant) error {
 	return nil
 }
 
-func (r *merchantRepository) CreateWallet(wallet *model.Wallet) error {
-	result := r.DB.Create(&wallet)
+func (r *merchantRepository) DeleteWalletById(id string) error {
+	result := r.DB.Where("id = ?", id).Delete(&model.Wallet{})
 	if result.Error != nil {
 		return result.Error
 	}

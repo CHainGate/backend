@@ -11,10 +11,11 @@ package publicService
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/CHainGate/backend/internal/service"
 	"github.com/CHainGate/backend/pkg/enum"
 	"github.com/CHainGate/backend/publicApi"
-	"net/http"
 )
 
 // PaymentApiService is a service that implements the logic for the PaymentApiServicer
@@ -45,9 +46,16 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 
 	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(paymentRequestDto.PriceCurrency)
 	if !ok {
-
 	}
-	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, "wallet_add", apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
+
+	var wallet string
+	for _, w := range merchant.Wallets {
+		if apiKey.Mode == w.Mode {
+			wallet = w.Address
+		}
+	}
+
+	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, wallet, apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
 	if err != nil {
 		return publicApi.ImplResponse{}, err
 	}

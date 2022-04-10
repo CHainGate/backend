@@ -11,9 +11,10 @@ package internalService
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/CHainGate/backend/internal/service"
 	"github.com/CHainGate/backend/internalApi"
-	"net/http"
 )
 
 // PaymentUpdateApiService is a service that implements the logic for the PaymentUpdateApiServicer

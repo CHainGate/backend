@@ -3,6 +3,10 @@ package enum
 import "strings"
 
 type CryptoCurrency int
+type Currency struct {
+	Name      string
+	ShortName string
+}
 
 // https://levelup.gitconnected.com/implementing-enums-in-golang-9537c433d6e2
 const (
@@ -24,10 +28,9 @@ func ParseStringToCryptoCurrencyEnum(str string) (CryptoCurrency, bool) {
 	return c, ok
 }
 
-func GetCryptoCurrencyDetails() map[string]string {
-	details := map[string]string{
-		"eth": "Ethereum",
-		"btc": "Bitcoin",
+func GetCryptoCurrencyDetails() []Currency {
+	return []Currency{
+		{"Ethereum", "eth"},
+		{"Bitcoin", "btc"},
 	}
-	return details
 }

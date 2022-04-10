@@ -32,35 +32,34 @@ type Merchant struct {
 
 type EmailVerification struct {
 	Base
-	MerchantId       uuid.UUID
+	MerchantId       uuid.UUID `gorm:"type:uuid"`
 	VerificationCode uint64
 }
 
 type Wallet struct {
 	Base
-	MerchantId uuid.UUID
-	Currency   enum.CryptoCurrency
-	Mode       enum.Mode
+	MerchantId uuid.UUID           `gorm:"index:wallet_index,unique;type:uuid"`
+	Currency   enum.CryptoCurrency `gorm:"index:wallet_index,unique"`
+	Mode       enum.Mode           `gorm:"index:wallet_index,unique,where:deleted_at IS NULL"`
 	Address    string
 }
 
 type ApiKey struct {
 	Base
-	MerchantId uuid.UUID       `gorm:"index:api_key_index,unique"`
+	MerchantId uuid.UUID       `gorm:"index:api_key_index,unique;type:uuid"`
 	Mode       enum.Mode       `gorm:"index:api_key_index,unique"`
-	KeyType    enum.ApiKeyType `gorm:"index:api_key_index,unique"`
+	KeyType    enum.ApiKeyType `gorm:"index:api_key_index,unique,where:deleted_at IS NULL""`
 	ApiKey     string
 	SecretKey  string
 	Salt       []byte
-	IsActive   bool `gorm:"index:api_key_index,unique,where:is_active = true"`
 }
 
 type Payment struct {
 	Base
-	BlockchainPaymentId uuid.UUID
-	MerchantId          uuid.UUID
+	BlockchainPaymentId uuid.UUID `gorm:"type:uuid"`
+	MerchantId          uuid.UUID `gorm:"type:uuid"`
 	Wallet              Wallet
-	WalletId            uuid.UUID
+	WalletId            uuid.UUID `gorm:"type:uuid"`
 	Mode                enum.Mode
 	PriceAmount         float64 `gorm:"type:numeric"`
 	PriceCurrency       enum.FiatCurrency
@@ -72,8 +71,8 @@ type Payment struct {
 
 type PaymentState struct {
 	Base
-	PaymentId    uuid.UUID
-	PayAmount    float64 `gorm:"type:numeric"`
-	ActuallyPaid float64 `gorm:"type:numeric"`
+	PaymentId    uuid.UUID `gorm:"type:uuid"`
+	PayAmount    float64   `gorm:"type:numeric"`
+	ActuallyPaid float64   `gorm:"type:numeric"`
 	PaymentState enum.State
 }

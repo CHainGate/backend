@@ -7,11 +7,33 @@ info:
   version: 1.0.0
   title: Config OpenAPI
 tags:
+  - name: config
   - name: authentication
   - name: wallet
   - name: api-key
   - name: logging
 paths:
+  /config:
+    get:
+      tags:
+        - config
+      summary: Get the configuration
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: header
+          name: authorization
+          schema:
+            type: string
+      operationId: getConfig
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponseDto'
+
   /login:
     post:
       tags:
@@ -84,6 +106,10 @@ paths:
            enum:
             - test
             - main
+       - in: header
+         name: authorization
+         schema:
+           type: string
       responses:
         '200':
           description: operation successful
@@ -102,6 +128,11 @@ paths:
       operationId: addWallet
       security:
         - bearerAuth: []
+      parameters:
+        - in: header
+          name: authorization
+          schema:
+            type: string
       responses:
         '201':
           description: new wallet created
@@ -127,6 +158,10 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: header
+          name: authorization
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses: 
@@ -288,6 +323,14 @@ components:
           schema:
             $ref: '#/components/schemas/ApiKeyRequestDTO'
   schemas:
+    ConfigResponseDto:
+      title: Config Response DTO
+      type: object
+      properties:
+        supportedCryptoCurrencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/currency'
     LoginRequestDto:
       title: Login Request DTO
       type: object
@@ -413,6 +456,12 @@ components:
     LoggingResponseDto:
       title: Logging Informations Response DTO
       type: object
+      required:
+        - payment_id
+        - callback_url
+        - created_at
+        - updated_at
+        - history
       properties:
         payment_id:
           type: string
@@ -432,6 +481,17 @@ components:
     PaymentHistory:
       title: Payment History
       type: object
+      required:
+        - id
+        - pay_address
+        - price_amount
+        - price_currency
+        - pay_amount
+        - pay_currency
+        - pay_address
+        - actually_paid
+        - payment_state
+        - created_at
       properties:
         id:
           type: string
@@ -471,3 +531,11 @@ components:
         created_at:
           type: string
           format: date-time
+    currency:
+      title: Currency
+      type: object
+      properties:
+        name:
+          type: string
+        shortName:
+          type: string

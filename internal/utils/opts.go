@@ -10,16 +10,16 @@ import (
 )
 
 type OptsType struct {
-	ServerPort   int
-	DbHost       string
-	DbUser       string
-	DbPassword   string
-	DbName       string
-	DbPort       string
-	JwtSecret    string
-	ApiKeySecret string
-
+	ServerPort           int
+	DbHost               string
+	DbUser               string
+	DbPassword           string
+	DbName               string
+	DbPort               string
+	JwtSecret            string
+	ApiKeySecret         string
 	EmailVerificationUrl string
+	ProxyBaseUrl         string
 }
 
 var (
@@ -42,8 +42,8 @@ func NewOpts() {
 	flag.StringVar(&o.DbPort, "DB_PORT", lookupEnv("DB_PORT"), "Database Port")
 	flag.StringVar(&o.JwtSecret, "JWT_SECRET", lookupEnv("JWT_SECRET"), "JWT Secret")
 	flag.StringVar(&o.ApiKeySecret, "API_KEY_SECRET", lookupEnv("API_KEY_SECRET"), "API Key Secret")
-
 	flag.StringVar(&o.EmailVerificationUrl, "EMAIL_VERIFICATION_URL", lookupEnv("EMAIL_VERIFICATION_URL"), "Email Verification URL")
+	flag.StringVar(&o.ProxyBaseUrl, "PROXY_BASE_URL", lookupEnv("PROXY_BASE_URL", "http://localhost:8001/api"), "Proxy base url")
 
 	Opts = o
 }
