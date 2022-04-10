@@ -16,6 +16,7 @@ func TestNewOpts(t *testing.T) {
 		JwtSecret:            "jwt_secret_token",
 		ApiKeySecret:         "api_secret_key",
 		EmailVerificationUrl: "https://send.email.ch/mail",
+		ProxyBaseUrl:         "http://localhost:8001/api",
 	}
 
 	_ = os.Setenv("SERVER_PORT", "8000")
@@ -27,6 +28,7 @@ func TestNewOpts(t *testing.T) {
 	_ = os.Setenv("JWT_SECRET", "jwt_secret_token")
 	_ = os.Setenv("API_KEY_SECRET", "api_secret_key")
 	_ = os.Setenv("EMAIL_VERIFICATION_URL", "https://send.email.ch/mail")
+	_ = os.Setenv("PROXY_BASE_URL", "http://localhost:8001/api")
 
 	NewOpts()
 

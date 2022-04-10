@@ -149,6 +149,7 @@ func TestHandleAuthorization(t *testing.T) {
 
 	mock.ExpectQuery("SELECT (.+) FROM \"merchants\"").WithArgs(testMerchant.Email).WillReturnRows(merchantRow)
 	mock.ExpectQuery("SELECT (.+) FROM \"email_verifications\"").WithArgs(testMerchant.ID).WillReturnRows(verificationRow)
+	mock.ExpectQuery("SELECT (.+) FROM \"wallets\"").WithArgs(testMerchant.ID).WillReturnRows(sqlmock.NewRows([]string{""}))
 
 	token, err := createJwtToken(testMerchant.Email, time.Hour*1)
 	if err != nil {
@@ -200,6 +201,7 @@ func TestHandleVerification(t *testing.T) {
 
 	mock.ExpectQuery("SELECT (.+) FROM \"merchants\"").WithArgs(merchant.Email).WillReturnRows(merchantRow)
 	mock.ExpectQuery("SELECT (.+) FROM \"email_verifications\"").WithArgs(merchant.ID).WillReturnRows(verificationRow)
+	mock.ExpectQuery("SELECT (.+) FROM \"wallets\"").WithArgs(testMerchant.ID).WillReturnRows(sqlmock.NewRows([]string{""}))
 
 	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE \"merchants\"").
@@ -267,7 +269,7 @@ func TestSendVerificationEmail(t *testing.T) {
 			Name:    "Momo",
 			EmailTo: "momo@mail.com",
 			Subject: "Verify your E-Mail",
-			Content: "Please Verify your E-Mail: ?email=momo@mail.com&code=123456",
+			Content: "Please Verify your E-Mail: ?code=123456&email=momo%40mail.com",
 		}
 
 		var actually proxyClientApi.EmailRequestDto
