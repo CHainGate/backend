@@ -35,7 +35,7 @@ func main() {
 	AuthenticationApiService := configService.NewAuthenticationApiService(authService)
 	AuthenticationApiController := configApi.NewAuthenticationApiController(AuthenticationApiService)
 
-	LoggingApiService := configService.NewLoggingApiService()
+	LoggingApiService := configService.NewLoggingApiService(authService, paymentRepo)
 	LoggingApiController := configApi.NewLoggingApiController(LoggingApiService)
 
 	WalletApiService := configService.NewWalletApiService(authService, merchantRepo)
