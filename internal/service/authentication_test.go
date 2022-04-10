@@ -298,13 +298,12 @@ func TestSendVerificationEmail(t *testing.T) {
 
 // TODO: improve test
 func TestHandleSecretApiKey(t *testing.T) {
-	key, _, err := service.CreateSecretApiKey(enum.Test, enum.Secret)
+	key, err := service.CreateSecretApiKey(enum.Test, enum.Secret)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if key.Mode != enum.Test ||
-		key.KeyType != enum.Secret ||
-		key.IsActive != true {
+		key.KeyType != enum.Secret {
 		t.Errorf("")
 	}
 }
@@ -316,8 +315,7 @@ func TestHandlePublicApiKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	if key.Mode != enum.Test ||
-		key.KeyType != enum.Public ||
-		key.IsActive != true {
+		key.KeyType != enum.Public {
 		t.Errorf("")
 	}
 }

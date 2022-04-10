@@ -28,7 +28,7 @@ type IAuthenticationService interface {
 	HandleJwtAuthentication(bearer string) (*model.Merchant, error)
 	HandleLogin(email string, password string) (string, error)
 	HandleApiAuthentication(apiKey string) (*model.Merchant, *model.ApiKey, error)
-	CreateSecretApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, string, error)
+	CreateSecretApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error)
 	CreatePublicApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error)
 	CreateMerchant(registerRequestDto configApi.RegisterRequestDto) error
 	HandleVerification(email string, verificationCode int64) error
@@ -123,27 +123,26 @@ func (s *authenticationService) HandleApiAuthentication(apiKey string) (*model.M
 	return merchant, currentApiKey, nil
 }
 
-func (s *authenticationService) CreateSecretApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, string, error) {
+func (s *authenticationService) CreateSecretApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error) {
 	apiSecretKey, err := generateApiKey()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	key := model.ApiKey{
-		Mode:     mode,
-		KeyType:  apiKeyType,
-		IsActive: true,
+		Mode:    mode,
+		KeyType: apiKeyType,
 	}
 	key.ID = uuid.New()
 
 	salt, err := createSalt()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	apiSecureKeyEncrypted, err := scryptPassword(apiSecretKey, salt)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	key.SecretKey = apiSecureKeyEncrypted
@@ -151,12 +150,12 @@ func (s *authenticationService) CreateSecretApiKey(mode enum.Mode, apiKeyType en
 
 	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	key.ApiKey = getApiKeyHint(combinedApiKey)
+	key.ApiKey = combinedApiKey
 
-	return &key, combinedApiKey, nil
+	return &key, nil
 }
 
 func (s *authenticationService) CreatePublicApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error) {
@@ -165,9 +164,8 @@ func (s *authenticationService) CreatePublicApiKey(mode enum.Mode, apiKeyType en
 		return nil, err
 	}
 	key := model.ApiKey{
-		Mode:     mode,
-		KeyType:  apiKeyType,
-		IsActive: true,
+		Mode:    mode,
+		KeyType: apiKeyType,
 	}
 
 	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
