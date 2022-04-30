@@ -20,6 +20,7 @@ type OptsType struct {
 	ApiKeySecret         string
 	EmailVerificationUrl string
 	ProxyBaseUrl         string
+	EthereumBaseUrl      string
 }
 
 var (
@@ -44,6 +45,7 @@ func NewOpts() {
 	flag.StringVar(&o.ApiKeySecret, "API_KEY_SECRET", lookupEnv("API_KEY_SECRET"), "API Key Secret")
 	flag.StringVar(&o.EmailVerificationUrl, "EMAIL_VERIFICATION_URL", lookupEnv("EMAIL_VERIFICATION_URL"), "Email Verification URL")
 	flag.StringVar(&o.ProxyBaseUrl, "PROXY_BASE_URL", lookupEnv("PROXY_BASE_URL", "http://localhost:8001/api"), "Proxy base url")
+	flag.StringVar(&o.EthereumBaseUrl, "ETHEREUM_BASE_URL", lookupEnv("ETHEREUM_BASE_URL", "http://localhost:9000/api"), "Ethereum base url")
 
 	Opts = o
 }

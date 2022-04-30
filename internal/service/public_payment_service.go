@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/CHainGate/backend/internal/utils"
 
 	"github.com/CHainGate/backend/ethClientApi"
 	"github.com/CHainGate/backend/internal/model"
@@ -90,6 +91,7 @@ func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.Paymen
 func createEthPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode) (*ethClientApi.PaymentResponse, error) {
 	paymentRequest := *ethClientApi.NewPaymentRequest(priceCurrency.String(), priceAmount, wallet, mode.String())
 	configuration := ethClientApi.NewConfiguration()
+	configuration.Servers[0].URL = utils.Opts.EthereumBaseUrl
 	apiClient := ethClientApi.NewAPIClient(configuration)
 	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequest(paymentRequest).Execute()
 	if err != nil {
