@@ -93,7 +93,7 @@ func callWebhook(payment *model.Payment) error {
 
 	webhook := *proxyClientApi.NewWebHookRequestDto(payment.CallbackUrl, body)
 	configuration := proxyClientApi.NewConfiguration()
-	configuration.Servers[0].URL = utils.Opts.EthereumBaseUrl
+	configuration.Servers[0].URL = utils.Opts.ProxyBaseUrl
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err = apiClient.WebhookApi.SendWebhook(context.Background()).WebHookRequestDto(webhook).Execute()
 	if err != nil {
