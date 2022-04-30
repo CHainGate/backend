@@ -6,6 +6,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/CHainGate/backend/internal/utils"
 	"io"
 
 	"github.com/CHainGate/backend/internal/model"
@@ -92,6 +93,7 @@ func callWebhook(payment *model.Payment) error {
 
 	webhook := *proxyClientApi.NewWebHookRequestDto(payment.CallbackUrl, body)
 	configuration := proxyClientApi.NewConfiguration()
+	configuration.Servers[0].URL = utils.Opts.EthereumBaseUrl
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err = apiClient.WebhookApi.SendWebhook(context.Background()).WebHookRequestDto(webhook).Execute()
 	if err != nil {
