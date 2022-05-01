@@ -17,6 +17,7 @@ func TestNewOpts(t *testing.T) {
 		ApiKeySecret:         "api_secret_key",
 		EmailVerificationUrl: "https://send.email.ch/mail",
 		ProxyBaseUrl:         "http://localhost:8001/api",
+		EthereumBaseUrl:      "http://localhost:9000/api",
 	}
 
 	_ = os.Setenv("SERVER_PORT", "8000")
