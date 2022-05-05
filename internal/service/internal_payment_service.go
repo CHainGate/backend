@@ -6,8 +6,9 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/CHainGate/backend/internal/utils"
 	"io"
+
+	"github.com/CHainGate/backend/internal/utils"
 
 	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/repository"
