@@ -2,11 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/CHainGate/backend/pkg/enum"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/repository"
@@ -21,6 +24,11 @@ import (
 
 	"github.com/rs/cors"
 )
+
+type socketMessage struct {
+	MessageType string      `json:"type"`
+	Data        interface{} `json:"data"`
+}
 
 // We'll need to define an Upgrader
 // this will require a Read and Write buffer size
@@ -100,13 +108,16 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	paymentIdParam := r.URL.Query().Get("pid")
+	paymentId := uuid.MustParse(paymentIdParam)
+
 	lock.Lock()
-	clients[user.Id] = conn
+	clients[paymentId] = append(clients[paymentId], conn)
 	lock.Unlock()
 	conn.SetCloseHandler(func(code int, text string) error {
-		log.Printf("closing connection for %v", user.Id)
+		log.Printf("closing connection for %v", paymentId)
 		lock.Lock()
-		delete(clients, user.Id)
+		delete(clients, paymentId)
 		lock.Unlock()
 		return nil
 	})
@@ -116,40 +127,55 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	notifyBrowser(user.Id, user.PaymentCycleInId)
+	go notifyBrowser(paymentId)
 }
 
-func notifyBrowser(uid uuid.UUID, paymentCycleId *uuid.UUID) {
-	go func(uid uuid.UUID, paymentCycleId *uuid.UUID) {
-		err := sendToBrowser(uid, paymentCycleId)
-		if err != nil {
-			log.Warnf("could not notify client %v, %v", uid, err)
-		}
-	}(uid, paymentCycleId)
+func notifyBrowser(pid uuid.UUID) {
+	err := sendToBrowser(pid)
+	if err != nil {
+		log.Printf("could not notify client %v, %v", pid, err)
+	}
 }
 
-func sendToBrowser(userId uuid.UUID, paymentCycleInId *uuid.UUID) error {
+func sendToBrowser(pid uuid.UUID) error {
 	lock.Lock()
-	conn := clients[userId]
+	conns := clients[pid]
 	lock.Unlock()
 
-	if conn == nil {
-		return fmt.Errorf("cannot get websockt for client %v", userId)
+	if conns == nil {
+		return fmt.Errorf("cannot get websockt for clients %v", pid)
 	}
 
-	userBalances, err := findUserBalances(userId)
-	if err != nil {
-		conn.Close()
-		return err
+	for i, conn := range conns {
+		err := conn.WriteJSON(socketMessage{MessageType: "currencies", Data: enum.GetCryptoCurrencyDetails()})
+		if err != nil {
+			conn.Close()
+			// Remove the element at index i from a.
+			clients[pid][i] = clients[pid][len(clients[pid])-1] // Copy last element to index i.
+			clients[pid][len(clients[pid])-1] = nil             // Erase last element (write zero value).
+			clients[pid] = clients[pid][:len(clients[pid])-1]   // Truncate slice.
+		}
 	}
 
-	err = conn.WriteJSON(UserBalances{PaymentCycle: pc, UserBalances: userBalancesDto, Total: total, DaysLeft: daysLeft})
-	if err != nil {
-		conn.Close()
-		return err
-	}
+	go sendMessage()
 
 	return nil
+}
+
+func sendMessage() {
+	time.Sleep(5 * time.Second)
+	pid := uuid.MustParse("a6e2b1bc-5d17-40d5-ae91-9cce9a8304b5")
+	conns := clients[pid]
+	for i, conn := range conns {
+		err := conn.WriteJSON(socketMessage{MessageType: "received-tx", Data: enum.GetCryptoCurrencyDetails()})
+		if err != nil {
+			conn.Close()
+			// Remove the element at index i from a.
+			clients[pid][i] = clients[pid][len(clients[pid])-1] // Copy last element to index i.
+			clients[pid][len(clients[pid])-1] = nil             // Erase last element (write zero value).
+			clients[pid] = clients[pid][:len(clients[pid])-1]   // Truncate slice.
+		}
+	}
 }
 
 // define a reader which will listen for
