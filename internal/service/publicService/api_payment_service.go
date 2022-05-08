@@ -75,3 +75,44 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 	}
 	return publicApi.Response(http.StatusCreated, paymentResponseDto), nil
 }
+
+// NewInvoice - Create a new payment
+func (s *PaymentApiService) NewInvoice(_ context.Context, xAPIKEY string, invoiceRequestDto publicApi.PaymentRequestDto) (publicApi.ImplResponse, error) {
+	merchant, apiKey, err := s.authenticationService.HandleApiAuthentication(xAPIKEY)
+	if err != nil {
+		if err.Error() == "not authorized" {
+			return publicApi.Response(http.StatusForbidden, nil), err
+		}
+		return publicApi.Response(http.StatusInternalServerError, nil), err
+	}
+
+	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(invoiceRequestDto.PriceCurrency)
+	if !ok {
+	}
+
+	var wallet string
+	for _, w := range merchant.Wallets {
+		if apiKey.Mode == w.Mode {
+			wallet = w.Address
+		}
+	}
+
+	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, invoiceRequestDto.PriceAmount, wallet, apiKey.Mode, invoiceRequestDto.CallbackUrl, merchant)
+	if err != nil {
+		return publicApi.ImplResponse{}, err
+	}
+
+	paymentResponseDto := publicApi.InvoiceResponseDto{
+		Id:            payment.ID.String(),
+		PayAddress:    payment.PayAddress,
+		PriceAmount:   payment.PriceAmount,
+		PriceCurrency: payment.PriceCurrency.String(),
+		ActuallyPaid:  &payment.PaymentStates[0].ActuallyPaid,
+		CallbackUrl:   payment.CallbackUrl,
+		InvoiceUrl:    "http://localhost:3000/payment/" + payment.ID.String(),
+		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
+		CreatedAt:     payment.CreatedAt,
+		UpdatedAt:     payment.UpdatedAt,
+	}
+	return publicApi.Response(http.StatusCreated, paymentResponseDto), nil
+}

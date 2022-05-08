@@ -25,9 +25,13 @@ import (
 	"github.com/rs/cors"
 )
 
-type socketMessage struct {
+type SocketMessage struct {
 	MessageType string      `json:"type"`
 	Data        interface{} `json:"data"`
+}
+
+type CurrencySelection struct {
+	Currency string `json:"currency"`
 }
 
 // We'll need to define an Upgrader
@@ -39,6 +43,7 @@ var upgrader = websocket.Upgrader{
 
 var lock = sync.Mutex{}
 var clients = make(map[uuid.UUID][]*websocket.Conn)
+var clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
@@ -146,18 +151,34 @@ func sendToBrowser(pid uuid.UUID) error {
 		return fmt.Errorf("cannot get websockt for clients %v", pid)
 	}
 
-	for i, conn := range conns {
-		err := conn.WriteJSON(socketMessage{MessageType: "currencies", Data: enum.GetCryptoCurrencyDetails()})
+	for _, conn := range conns {
+		err := conn.WriteJSON(SocketMessage{MessageType: "currencies", Data: enum.GetCryptoCurrencyDetails()})
 		if err != nil {
 			conn.Close()
-			// Remove the element at index i from a.
-			clients[pid][i] = clients[pid][len(clients[pid])-1] // Copy last element to index i.
-			clients[pid][len(clients[pid])-1] = nil             // Erase last element (write zero value).
-			clients[pid] = clients[pid][:len(clients[pid])-1]   // Truncate slice.
+		} else {
+			clientsCopy[pid] = append(clientsCopy[pid], conn)
 		}
+	}
+	clients[pid] = clientsCopy[pid]
+	clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
+
+	for {
+		for _, conn := range conns {
+			var message SocketMessage
+			err := conn.ReadJSON(message)
+			if err != nil {
+				log.Println("read failed:", err)
+				break
+			}
+			cs := message.Data.(CurrencySelection)
+			log.Println("cs", cs)
+		}
+
 	}
 
 	go sendMessage()
+	go sendMessage2()
+	go sendMessage3()
 
 	return nil
 }
@@ -166,16 +187,48 @@ func sendMessage() {
 	time.Sleep(5 * time.Second)
 	pid := uuid.MustParse("a6e2b1bc-5d17-40d5-ae91-9cce9a8304b5")
 	conns := clients[pid]
-	for i, conn := range conns {
-		err := conn.WriteJSON(socketMessage{MessageType: "received-tx", Data: enum.GetCryptoCurrencyDetails()})
+	for _, conn := range conns {
+		err := conn.WriteJSON(SocketMessage{MessageType: "wait-for-tx", Data: enum.GetCryptoCurrencyDetails()})
 		if err != nil {
 			conn.Close()
-			// Remove the element at index i from a.
-			clients[pid][i] = clients[pid][len(clients[pid])-1] // Copy last element to index i.
-			clients[pid][len(clients[pid])-1] = nil             // Erase last element (write zero value).
-			clients[pid] = clients[pid][:len(clients[pid])-1]   // Truncate slice.
+		} else {
+			clientsCopy[pid] = append(clientsCopy[pid], conn)
 		}
 	}
+	clients[pid] = clientsCopy[pid]
+	clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
+}
+
+func sendMessage2() {
+	time.Sleep(10 * time.Second)
+	pid := uuid.MustParse("a6e2b1bc-5d17-40d5-ae91-9cce9a8304b5")
+	conns := clients[pid]
+	for _, conn := range conns {
+		err := conn.WriteJSON(SocketMessage{MessageType: "received-tx", Data: enum.GetCryptoCurrencyDetails()})
+		if err != nil {
+			conn.Close()
+		} else {
+			clientsCopy[pid] = append(clientsCopy[pid], conn)
+		}
+	}
+	clients[pid] = clientsCopy[pid]
+	clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
+}
+
+func sendMessage3() {
+	time.Sleep(15 * time.Second)
+	pid := uuid.MustParse("a6e2b1bc-5d17-40d5-ae91-9cce9a8304b5")
+	conns := clients[pid]
+	for _, conn := range conns {
+		err := conn.WriteJSON(SocketMessage{MessageType: "confirmed", Data: enum.GetCryptoCurrencyDetails()})
+		if err != nil {
+			conn.Close()
+		} else {
+			clientsCopy[pid] = append(clientsCopy[pid], conn)
+		}
+	}
+	clients[pid] = clientsCopy[pid]
+	clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
 }
 
 // define a reader which will listen for

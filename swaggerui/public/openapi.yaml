@@ -13,8 +13,8 @@ paths:
     post:
       tags:
         - payment
-      summary: Create a new payment
-      description: 'Create a new payment'
+      summary: Create a new payment with currency already defined
+      description: 'Create a new payment with currency already defined. Returns only a payment address'
       operationId: newPayment
       security:
         - ApiKeyAuth: []
@@ -34,6 +34,31 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
       requestBody:
         $ref: '#/components/requestBodies/Payment'
+  /invoice:
+    post:
+      tags:
+        - invoice
+      summary: Create a new invoice
+      description: 'Create a new invoice. Returns an URL'
+      operationId: newInvoice
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: header
+          name: X-API-KEY
+          schema:
+            type: string
+      responses:
+        '201':
+          description: invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponseDto'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+      requestBody:
+        $ref: '#/components/requestBodies/Invoice'
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -49,6 +74,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PaymentRequestDto'
+    Invoice:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InvoiceRequestDto'
   schemas:
     PaymentResponseDto:
       title: Payment Response DTO
@@ -65,49 +95,49 @@ components:
         - created_at
         - updated_at
       properties:
-          id:
-           type: string
-           format: uuid
-          pay_address:
-           type: string
-          price_amount:
-           type: number
-           format: double
-          price_currency:
-           type: string
-           enum:
-             - usd
-             - chf
-          pay_amount:
-           type: number
-           format: double
-          pay_currency:
-           type: string
-           enum:
-             - eth
-             - btc
-          actually_paid:
-           type: number
-           format: double
-           nullable: true
-          callback_url:
-           type: string
-          payment_state:
-           type: string
-           enum:
-             - waiting
-             - partially_paid 
-             - paid
-             - sending
-             - finished
-             - expired
-             - failed
-          created_at:
-           type: string
-           format: date-time
-          updated_at:
-           type: string
-           format: date-time
+        id:
+          type: string
+          format: uuid
+        pay_address:
+          type: string
+        price_amount:
+          type: number
+          format: double
+        price_currency:
+          type: string
+          enum:
+            - usd
+            - chf
+        pay_amount:
+          type: number
+          format: double
+        pay_currency:
+          type: string
+          enum:
+            - eth
+            - btc
+        actually_paid:
+          type: number
+          format: double
+          nullable: true
+        callback_url:
+          type: string
+        payment_state:
+          type: string
+          enum:
+            - waiting
+            - partially_paid
+            - paid
+            - sending
+            - finished
+            - expired
+            - failed
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     PaymentRequestDto:
       title: Payment Request DTO
       type: object
@@ -115,6 +145,81 @@ components:
         - price_currency
         - price_amount
         - pay_currency
+        - callback_url
+      properties:
+        price_currency:
+          type: string
+          enum:
+            - usd
+            - chf
+        price_amount:
+          type: number
+          format: double
+        pay_currency:
+          type: string
+          enum:
+            - eth
+            - btc
+        callback_url:
+          type: string
+    InvoiceResponseDto:
+      title: Invoice Response DTO
+      type: object
+      required:
+        - id
+        - pay_address
+        - price_currency
+        - pay_amount
+        - pay_currency
+        - actually_paid
+        - callback_url
+        - payment_state
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        pay_address:
+          type: string
+        price_amount:
+          type: number
+          format: double
+        price_currency:
+          type: string
+          enum:
+            - usd
+            - chf
+        actually_paid:
+          type: number
+          format: double
+          nullable: true
+        callback_url:
+          type: string
+        invoice_url:
+          type: string
+        payment_state:
+          type: string
+          enum:
+            - waiting
+            - partially_paid
+            - paid
+            - sending
+            - finished
+            - expired
+            - failed
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    InvoiceRequestDto:
+      title: Invoice Request DTO
+      type: object
+      required:
+        - price_currency
+        - price_amount
         - callback_url
       properties:
         price_currency:
