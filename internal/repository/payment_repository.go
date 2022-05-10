@@ -12,6 +12,7 @@ type paymentRepository struct {
 }
 
 type IPaymentRepository interface {
+	FindByPaymentId(paymentId uuid.UUID) (*model.Payment, error)
 	FindByMerchantIdAndMode(merchantId uuid.UUID, mode enum.Mode) ([]model.Payment, error)
 	FindByBlockchainIdAndCurrency(id string, currency enum.CryptoCurrency) (*model.Payment, error)
 	Update(payment *model.Payment) error
@@ -19,6 +20,17 @@ type IPaymentRepository interface {
 
 func NewPaymentRepository(db *gorm.DB) (IPaymentRepository, error) {
 	return &paymentRepository{db}, nil
+}
+
+func (r *paymentRepository) FindByPaymentId(paymentId uuid.UUID) (*model.Payment, error) {
+	var payment model.Payment
+	result := r.DB.Preload("PaymentStates", func(db *gorm.DB) *gorm.DB {
+		return db.Order("payment_states.created_at DESC")
+	}).Where("id = ?", paymentId).Order("payments.updated_at DESC").First(&payment)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &payment, nil
 }
 
 func (r *paymentRepository) FindByMerchantIdAndMode(merchantId uuid.UUID, mode enum.Mode) ([]model.Payment, error) {

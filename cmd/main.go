@@ -2,16 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-	"strconv"
-	"sync"
-	"time"
-
-	"github.com/CHainGate/backend/pkg/enum"
-
-	"github.com/google/uuid"
-
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/service"
@@ -20,31 +10,23 @@ import (
 	"github.com/CHainGate/backend/internal/service/publicService"
 	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/internalApi"
+	"github.com/CHainGate/backend/pkg/enum"
 	"github.com/CHainGate/backend/publicApi"
-	"github.com/gorilla/websocket"
+	"github.com/CHainGate/backend/websocket"
+	"github.com/google/uuid"
+	"log"
+	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/rs/cors"
 )
-
-type SocketMessage struct {
-	MessageType string      `json:"type"`
-	Data        interface{} `json:"data"`
-}
 
 type CurrencySelection struct {
 	Currency string `json:"currency"`
 }
 
-// We'll need to define an Upgrader
-// this will require a Read and Write buffer size
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-
-var lock = sync.Mutex{}
-var clients = make(map[uuid.UUID][]*websocket.Conn)
-var clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
+var pools = make(map[uuid.UUID]*websocket.Pool)
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
@@ -99,159 +81,56 @@ func main() {
 	http.Handle("/api/public/swaggerui/", http.StripPrefix("/api/public/swaggerui/", publicFs))
 	internalFs := http.FileServer(http.Dir("./swaggerui/internal"))
 	http.Handle("/api/internal/swaggerui/", http.StripPrefix("/api/internal/swaggerui/", internalFs))
-	http.HandleFunc("/ws", wsEndpoint)
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		paymentIdParam := r.URL.Query().Get("pid")
+		paymentId := uuid.MustParse(paymentIdParam)
+		pool := pools[paymentId]
+		if pool == nil {
+			pool = websocket.NewPool()
+			go pool.Start()
+			pools[paymentId] = pool
+		}
+		serveWs(pool, w, r, paymentRepo, paymentId)
+	})
 
 	log.Println("Starting backend-service on port " + strconv.Itoa(utils.Opts.ServerPort))
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(utils.Opts.ServerPort), nil))
 }
 
-func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-
-	conn, err := upgrader.Upgrade(w, r, nil)
-
+func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request, paymentRepository repository.IPaymentRepository, paymentId uuid.UUID) {
+	fmt.Println("WebSocket Endpoint Hit")
+	conn, err := websocket.Upgrade(w, r)
 	if err != nil {
-		log.Printf("could not upgrade connection: %v\n", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		fmt.Fprintf(w, "%+v\n", err)
 	}
 
-	paymentIdParam := r.URL.Query().Get("pid")
-	paymentId := uuid.MustParse(paymentIdParam)
+	client := &websocket.Client{
+		Conn: conn,
+		Pool: pool,
+	}
 
-	lock.Lock()
-	clients[paymentId] = append(clients[paymentId], conn)
-	lock.Unlock()
-	conn.SetCloseHandler(func(code int, text string) error {
-		log.Printf("closing connection for %v", paymentId)
-		lock.Lock()
-		delete(clients, paymentId)
-		lock.Unlock()
-		return nil
-	})
+	pool.Register <- client
 
-	conn.SetPongHandler(func(appData string) error {
-		log.Printf(appData)
-		return nil
-	})
-
-	go notifyBrowser(paymentId)
-}
-
-func notifyBrowser(pid uuid.UUID) {
-	err := sendToBrowser(pid)
+	payment, err := paymentRepository.FindByPaymentId(paymentId)
 	if err != nil {
-		log.Printf("could not notify client %v, %v", pid, err)
-	}
-}
-
-func sendToBrowser(pid uuid.UUID) error {
-	lock.Lock()
-	conns := clients[pid]
-	lock.Unlock()
-
-	if conns == nil {
-		return fmt.Errorf("cannot get websockt for clients %v", pid)
+		fmt.Fprintf(w, "%+v\n", err)
 	}
 
-	for _, conn := range conns {
-		err := conn.WriteJSON(SocketMessage{MessageType: "currencies", Data: enum.GetCryptoCurrencyDetails()})
-		if err != nil {
-			conn.Close()
-		} else {
-			clientsCopy[pid] = append(clientsCopy[pid], conn)
-		}
-	}
-	clients[pid] = clientsCopy[pid]
-	clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
+	state := payment.PaymentStates[0].PaymentState
 
-	for {
-		for _, conn := range conns {
-			var message SocketMessage
-			err := conn.ReadJSON(message)
-			if err != nil {
-				log.Println("read failed:", err)
-				break
-			}
-			cs := message.Data.(CurrencySelection)
-			log.Println("cs", cs)
-		}
-
+	switch state {
+	case enum.Waiting:
+		client.SendWaiting()
+	case enum.Paid:
+		client.SendReceivedTX()
+	case enum.Finished:
+		client.SendConfirmed()
 	}
 
-	go sendMessage()
-	go sendMessage2()
-	go sendMessage3()
-
-	return nil
-}
-
-func sendMessage() {
+	client.SendInitialCoins()
+	client.Read()
 	time.Sleep(5 * time.Second)
-	pid := uuid.MustParse("a6e2b1bc-5d17-40d5-ae91-9cce9a8304b5")
-	conns := clients[pid]
-	for _, conn := range conns {
-		err := conn.WriteJSON(SocketMessage{MessageType: "wait-for-tx", Data: enum.GetCryptoCurrencyDetails()})
-		if err != nil {
-			conn.Close()
-		} else {
-			clientsCopy[pid] = append(clientsCopy[pid], conn)
-		}
-	}
-	clients[pid] = clientsCopy[pid]
-	clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
-}
-
-func sendMessage2() {
-	time.Sleep(10 * time.Second)
-	pid := uuid.MustParse("a6e2b1bc-5d17-40d5-ae91-9cce9a8304b5")
-	conns := clients[pid]
-	for _, conn := range conns {
-		err := conn.WriteJSON(SocketMessage{MessageType: "received-tx", Data: enum.GetCryptoCurrencyDetails()})
-		if err != nil {
-			conn.Close()
-		} else {
-			clientsCopy[pid] = append(clientsCopy[pid], conn)
-		}
-	}
-	clients[pid] = clientsCopy[pid]
-	clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
-}
-
-func sendMessage3() {
-	time.Sleep(15 * time.Second)
-	pid := uuid.MustParse("a6e2b1bc-5d17-40d5-ae91-9cce9a8304b5")
-	conns := clients[pid]
-	for _, conn := range conns {
-		err := conn.WriteJSON(SocketMessage{MessageType: "confirmed", Data: enum.GetCryptoCurrencyDetails()})
-		if err != nil {
-			conn.Close()
-		} else {
-			clientsCopy[pid] = append(clientsCopy[pid], conn)
-		}
-	}
-	clients[pid] = clientsCopy[pid]
-	clientsCopy = make(map[uuid.UUID][]*websocket.Conn)
-}
-
-// define a reader which will listen for
-// new messages being sent to our WebSocket
-// endpoint
-func reader(conn *websocket.Conn) {
-	for {
-		// read in a message
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		// print out that message for clarity
-		fmt.Println(string(p))
-
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
-			return
-		}
-
-	}
+	client.SendReceivedTX()
+	time.Sleep(5 * time.Second)
+	client.SendConfirmed()
 }
