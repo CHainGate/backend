@@ -10,6 +10,11 @@ type StateEnumString struct {
 
 var stateEnumTests = []StateEnumString{
 	{
+		enum:   CurrencySelection,
+		name:   "CurrencySelection",
+		string: "currency_selection",
+	},
+	{
 		enum:   Waiting,
 		name:   "Waiting",
 		string: "waiting",
@@ -25,9 +30,14 @@ var stateEnumTests = []StateEnumString{
 		string: "paid",
 	},
 	{
-		enum:   Sending,
-		name:   "StateSending",
-		string: "sending",
+		enum:   Confirmed,
+		name:   "Confirmed",
+		string: "confirmed",
+	},
+	{
+		enum:   Forwarded,
+		name:   "Forwarded",
+		string: "forwarded",
 	},
 	{
 		enum:   Finished,
