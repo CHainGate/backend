@@ -14,6 +14,7 @@ import (
 	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/service"
+	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/pkg/enum"
 	"github.com/CHainGate/backend/publicApi"
 	"github.com/google/uuid"
@@ -89,7 +90,7 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 		PriceCurrency: payment.PriceCurrency.String(),
 		ActuallyPaid:  &payment.PaymentStates[0].ActuallyPaid,
 		CallbackUrl:   payment.CallbackUrl,
-		InvoiceUrl:    "http://localhost:3000/payment/" + payment.ID.String(),
+		InvoiceUrl:    utils.Opts.PaymentBaseUrl + payment.ID.String(),
 		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
 		CreatedAt:     payment.CreatedAt,
 		UpdatedAt:     payment.UpdatedAt,
