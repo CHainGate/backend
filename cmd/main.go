@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/CHainGate/backend/pkg/enum"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/CHainGate/backend/pkg/enum"
 
 	"github.com/google/uuid"
 
@@ -73,10 +74,12 @@ func main() {
 
 	// public api
 	publicPaymentService := service.NewPublicPaymentService(merchantRepo)
+	publicInvoiceService := publicService.NewInvoiceApiService(publicPaymentService, authService, merchantRepo)
 	PaymentApiService := publicService.NewPaymentApiService(publicPaymentService, authService)
 	PaymentApiController := publicApi.NewPaymentApiController(PaymentApiService)
+	InvoiceApiController := publicApi.NewInvoiceApiController(publicInvoiceService)
 
-	publicRouter := publicApi.NewRouter(PaymentApiController)
+	publicRouter := publicApi.NewRouter(PaymentApiController, InvoiceApiController)
 
 	// internal api
 	internalPaymentService := service.NewInternalPaymentService(paymentRepo)
