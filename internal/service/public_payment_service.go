@@ -14,14 +14,17 @@ import (
 
 type IPublicPaymentService interface {
 	HandleNewPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode, callback string, merchant *model.Merchant) (*model.Payment, error)
+	HandleNewInvoice(payment *model.Payment, currency enum.CryptoCurrency) (*model.Payment, error)
 }
 
 type publicPaymentService struct {
-	merchantRepository repository.IMerchantRepository
+	merchantRepository     repository.IMerchantRepository
+	paymentRepository      repository.IPaymentRepository
+	internalPaymentService IInternalPaymentService
 }
 
-func NewPublicPaymentService(merchantRepository repository.IMerchantRepository) IPublicPaymentService {
-	return &publicPaymentService{merchantRepository}
+func NewPublicPaymentService(merchantRepository repository.IMerchantRepository, paymentRepository repository.IPaymentRepository, internalPaymentService IInternalPaymentService) IPublicPaymentService {
+	return &publicPaymentService{merchantRepository, paymentRepository, internalPaymentService}
 }
 
 func (s *publicPaymentService) HandleNewPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode, callback string, merchant *model.Merchant) (*model.Payment, error) {
@@ -31,6 +34,19 @@ func (s *publicPaymentService) HandleNewPayment(priceCurrency enum.FiatCurrency,
 	}
 
 	payment, err := s.handleEthClientResponse(paymentResponse, mode, callback, merchant)
+	if err != nil {
+		return nil, err
+	}
+	return payment, nil
+}
+
+func (s *publicPaymentService) HandleNewInvoice(initialPayment *model.Payment, currency enum.CryptoCurrency) (*model.Payment, error) {
+	paymentResponse, err := createEthPayment(initialPayment.PriceCurrency, initialPayment.PriceAmount, initialPayment.Wallet.Address, initialPayment.Mode)
+	if err != nil {
+		return nil, err
+	}
+
+	payment, err := s.handleEthClientResponseUpdate(paymentResponse, initialPayment, currency)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +72,7 @@ func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.Paymen
 	initialState := model.PaymentState{
 		PaymentState: paymentState,
 		PayAmount:    resp.PayAmount,
-		ActuallyPaid: 0,
+		ActuallyPaid: "0",
 	}
 
 	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(resp.PriceCurrency)
@@ -87,6 +103,44 @@ func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.Paymen
 	}
 
 	return &payment, nil
+}
+
+func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.PaymentResponse, payment *model.Payment, currency enum.CryptoCurrency) (*model.Payment, error) {
+	blockChainPaymentId, err := uuid.Parse(resp.PaymentId)
+	if err != nil {
+		return nil, err
+	}
+
+	paymentState, ok := enum.ParseStringToStateEnum(resp.PaymentStatus)
+	if !ok {
+		return nil, err
+	}
+	initialState := model.PaymentState{
+		PaymentState: paymentState,
+		PayAmount:    resp.PayAmount,
+		ActuallyPaid: "0",
+	}
+
+	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(resp.PriceCurrency)
+	if !ok {
+		return nil, err
+	}
+	payCurrency, ok := enum.ParseStringToCryptoCurrencyEnum(resp.PayCurrency)
+	if !ok {
+		return nil, err
+	}
+	payment.PriceAmount = resp.PriceAmount
+	payment.PriceCurrency = priceCurrency
+	payment.PayCurrency = payCurrency
+	payment.BlockchainPaymentId = blockChainPaymentId
+	payment.PayAddress = resp.PayAddress
+
+	err = s.internalPaymentService.AddNewPaymentState(payment, initialState)
+	if err != nil {
+		return nil, err
+	}
+
+	return payment, nil
 }
 
 func createEthPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode) (*ethClientApi.PaymentResponse, error) {

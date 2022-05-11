@@ -64,7 +64,7 @@ func (s *LoggingApiService) GetLoggingInformation(_ context.Context, mode string
 				PayCurrency:   payment.PayCurrency.String(),
 				PaymentState:  state.PaymentState.String(),
 				PayAmount:     state.PayAmount,
-				ActuallyPaid:  &actuallyPaid,
+				ActuallyPaid:  actuallyPaid,
 				PriceCurrency: payment.PriceCurrency.String(),
 				PriceAmount:   payment.PriceAmount,
 				PayAddress:    payment.PayAddress,

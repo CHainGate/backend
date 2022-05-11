@@ -72,7 +72,7 @@ type Payment struct {
 type PaymentState struct {
 	Base
 	PaymentId    uuid.UUID `gorm:"type:uuid"`
-	PayAmount    float64   `gorm:"type:numeric"`
-	ActuallyPaid float64   `gorm:"type:numeric"`
+	PayAmount    string
+	ActuallyPaid string
 	PaymentState enum.State
 }

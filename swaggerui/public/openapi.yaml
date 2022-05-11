@@ -188,9 +188,7 @@ components:
             - usd
             - chf
         actually_paid:
-          type: number
-          format: double
-          nullable: true
+          type: string
         callback_url:
           type: string
         invoice_url:

@@ -1,10 +1,11 @@
 package websocket
 
 import (
-	"github.com/CHainGate/backend/pkg/enum"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
+
+	"github.com/CHainGate/backend/pkg/enum"
+	"github.com/gorilla/websocket"
 )
 
 // We'll need to define an Upgrader
@@ -28,26 +29,27 @@ type Message struct {
 }
 
 func (c *Client) SendInitialCoins() {
-	message := Message{MessageType: "currencies", Body: enum.GetCryptoCurrencyDetails()}
+	message := Message{MessageType: enum.CurrencySelection.String(), Body: enum.GetCryptoCurrencyDetails()}
 	c.Conn.WriteJSON(message)
 }
 
 func (c *Client) SendWaiting() {
-	message := Message{MessageType: "wait-for-tx", Body: enum.GetCryptoCurrencyDetails()}
+	message := Message{MessageType: enum.Waiting.String(), Body: enum.GetCryptoCurrencyDetails()}
 	c.Pool.Broadcast <- message
 }
 
 func (c *Client) SendReceivedTX() {
-	message := Message{MessageType: "received-tx", Body: enum.GetCryptoCurrencyDetails()}
+	message := Message{MessageType: enum.Paid.String(), Body: enum.GetCryptoCurrencyDetails()}
 	c.Pool.Broadcast <- message
 }
 
 func (c *Client) SendConfirmed() {
-	message := Message{MessageType: "confirmed", Body: enum.GetCryptoCurrencyDetails()}
+	message := Message{MessageType: enum.Confirmed.String(), Body: enum.GetCryptoCurrencyDetails()}
 	c.Pool.Broadcast <- message
 }
 
-func (c *Client) Read() {
+func (c *Client) Read() string {
+	selected := ""
 	for {
 		var message Message
 		err := c.Conn.ReadJSON(&message)
@@ -58,10 +60,10 @@ func (c *Client) Read() {
 			break
 		}
 		mapCurrency := message.Body.(map[string]interface{})
-		selected := mapCurrency["currency"]
-		log.Println("cs", selected)
+		selected = mapCurrency["currency"].(string)
 		break
 	}
+	return selected
 }
 
 func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {

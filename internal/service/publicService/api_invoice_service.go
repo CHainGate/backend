@@ -11,6 +11,8 @@ package publicService
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/service"
@@ -18,7 +20,6 @@ import (
 	"github.com/CHainGate/backend/pkg/enum"
 	"github.com/CHainGate/backend/publicApi"
 	"github.com/google/uuid"
-	"net/http"
 )
 
 // InvoiceApiService is a service that implements the logic for the InvoiceApiServicer
@@ -63,8 +64,8 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 
 	initialState := model.PaymentState{
 		PaymentState: enum.Waiting,
-		PayAmount:    0,
-		ActuallyPaid: 0,
+		PayAmount:    "0",
+		ActuallyPaid: "0",
 	}
 
 	payment := model.Payment{
@@ -88,7 +89,7 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 		PayAddress:    payment.PayAddress,
 		PriceAmount:   payment.PriceAmount,
 		PriceCurrency: payment.PriceCurrency.String(),
-		ActuallyPaid:  &payment.PaymentStates[0].ActuallyPaid,
+		ActuallyPaid:  payment.PaymentStates[0].ActuallyPaid,
 		CallbackUrl:   payment.CallbackUrl,
 		InvoiceUrl:    utils.Opts.PaymentBaseUrl + payment.ID.String(),
 		PaymentState:  payment.PaymentStates[0].PaymentState.String(),

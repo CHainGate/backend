@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/service"
@@ -14,11 +18,6 @@ import (
 	"github.com/CHainGate/backend/publicApi"
 	"github.com/CHainGate/backend/websocket"
 	"github.com/google/uuid"
-	"log"
-	"net/http"
-	"strconv"
-	"time"
-
 	"github.com/rs/cors"
 )
 
@@ -54,19 +53,19 @@ func main() {
 
 	configRouter := configApi.NewRouter(ApiKeyApiController, AuthenticationApiController, LoggingApiController, WalletApiController, ConfigApiController)
 
+	// internal api
+	internalPaymentService := service.NewInternalPaymentService(paymentRepo)
+	PaymentUpdateApiService := internalService.NewPaymentUpdateApiService(internalPaymentService)
+	PaymentUpdateApiController := internalApi.NewPaymentUpdateApiController(PaymentUpdateApiService)
+
 	// public api
-	publicPaymentService := service.NewPublicPaymentService(merchantRepo)
+	publicPaymentService := service.NewPublicPaymentService(merchantRepo, paymentRepo, internalPaymentService)
 	publicInvoiceService := publicService.NewInvoiceApiService(publicPaymentService, authService, merchantRepo)
 	PaymentApiService := publicService.NewPaymentApiService(publicPaymentService, authService)
 	PaymentApiController := publicApi.NewPaymentApiController(PaymentApiService)
 	InvoiceApiController := publicApi.NewInvoiceApiController(publicInvoiceService)
 
 	publicRouter := publicApi.NewRouter(PaymentApiController, InvoiceApiController)
-
-	// internal api
-	internalPaymentService := service.NewInternalPaymentService(paymentRepo)
-	PaymentUpdateApiService := internalService.NewPaymentUpdateApiService(internalPaymentService)
-	PaymentUpdateApiController := internalApi.NewPaymentUpdateApiController(PaymentUpdateApiService)
 
 	internalRouter := internalApi.NewRouter(PaymentUpdateApiController)
 
@@ -90,14 +89,14 @@ func main() {
 			go pool.Start()
 			pools[paymentId] = pool
 		}
-		serveWs(pool, w, r, paymentRepo, paymentId)
+		serveWs(pool, w, r, publicPaymentService, paymentRepo, paymentId)
 	})
 
 	log.Println("Starting backend-service on port " + strconv.Itoa(utils.Opts.ServerPort))
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(utils.Opts.ServerPort), nil))
 }
 
-func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request, paymentRepository repository.IPaymentRepository, paymentId uuid.UUID) {
+func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request, publicPaymentService service.IPublicPaymentService, paymentRepository repository.IPaymentRepository, paymentId uuid.UUID) {
 	fmt.Println("WebSocket Endpoint Hit")
 	conn, err := websocket.Upgrade(w, r)
 	if err != nil {
@@ -119,18 +118,17 @@ func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request, payme
 	state := payment.PaymentStates[0].PaymentState
 
 	switch state {
+	case enum.CurrencySelection:
+		client.SendInitialCoins()
+		currency := client.Read()
+		payCurrency, _ := enum.ParseStringToCryptoCurrencyEnum(currency)
+		publicPaymentService.HandleNewInvoice(payment, payCurrency)
+		client.SendWaiting()
 	case enum.Waiting:
 		client.SendWaiting()
 	case enum.Paid:
 		client.SendReceivedTX()
-	case enum.Finished:
+	case enum.Confirmed:
 		client.SendConfirmed()
 	}
-
-	client.SendInitialCoins()
-	client.Read()
-	time.Sleep(5 * time.Second)
-	client.SendReceivedTX()
-	time.Sleep(5 * time.Second)
-	client.SendConfirmed()
 }

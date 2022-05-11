@@ -19,6 +19,7 @@ import (
 
 type IInternalPaymentService interface {
 	HandlePaymentUpdate(payment internalApi.PaymentUpdateDto) error
+	AddNewPaymentState(payment *model.Payment, paymentState model.PaymentState) error
 }
 
 type internalPaymentService struct {
@@ -27,6 +28,27 @@ type internalPaymentService struct {
 
 func NewInternalPaymentService(paymentRepository repository.IPaymentRepository) IInternalPaymentService {
 	return &internalPaymentService{paymentRepository}
+}
+
+func (s *internalPaymentService) AddNewPaymentState(payment *model.Payment, paymentState model.PaymentState) error {
+	payment.PaymentStates = append(payment.PaymentStates, paymentState)
+
+	err := s.paymentRepository.Update(payment)
+	if err != nil {
+		return err
+	}
+
+	payment, err = s.paymentRepository.FindByPaymentId(payment.ID)
+	if err != nil {
+		return err
+	}
+
+	err = callWebhook(payment)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.PaymentUpdateDto) error {
@@ -45,7 +67,7 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 	}
 	newPaymentState := model.PaymentState{
 		PaymentState: paymentState,
-		ActuallyPaid: *payment.ActuallyPaid,
+		ActuallyPaid: payment.ActuallyPaid,
 		PayAmount:    payment.PayAmount,
 	}
 
@@ -79,7 +101,7 @@ func callWebhook(payment *model.Payment) error {
 			PriceCurrency: payment.PriceCurrency.String(),
 			PayAmount:     currentState.PayAmount,
 			PayCurrency:   payment.PayCurrency.String(),
-			ActuallyPaid:  *proxyClientApi.NewNullableFloat64(&currentState.ActuallyPaid),
+			ActuallyPaid:  currentState.ActuallyPaid,
 			PaymentStatus: currentState.PaymentState.String(),
 			CreatedAt:     payment.CreatedAt,
 			UpdatedAt:     payment.UpdatedAt,

@@ -67,7 +67,7 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		PriceCurrency: payment.PriceCurrency.String(),
 		PayAmount:     payment.PaymentStates[0].PayAmount,
 		PayCurrency:   payment.PayCurrency.String(),
-		ActuallyPaid:  &payment.PaymentStates[0].ActuallyPaid,
+		ActuallyPaid:  payment.PaymentStates[0].ActuallyPaid,
 		CallbackUrl:   payment.CallbackUrl,
 		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
 		CreatedAt:     payment.CreatedAt,
