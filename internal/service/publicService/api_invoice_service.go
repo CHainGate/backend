@@ -55,17 +55,10 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 	if !ok {
 	}
 
-	var wallet model.Wallet
-	for _, w := range merchant.Wallets {
-		if apiKey.Mode == w.Mode {
-			wallet = w
-		}
-	}
-
 	initialState := model.PaymentState{
-		PaymentState: enum.Waiting,
-		PayAmount:    "0",
-		ActuallyPaid: "0",
+		PaymentState: enum.CurrencySelection,
+		PayAmount:    model.NewBigIntFromInt(0),
+		ActuallyPaid: model.NewBigIntFromInt(0),
 	}
 
 	payment := model.Payment{
@@ -74,7 +67,6 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 		PriceCurrency: priceCurrency,
 		PaymentStates: []model.PaymentState{initialState},
 		CallbackUrl:   invoiceRequestDto.CallbackUrl,
-		Wallet:        wallet,
 	}
 	payment.ID = uuid.New()
 
@@ -89,7 +81,7 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 		PayAddress:    payment.PayAddress,
 		PriceAmount:   payment.PriceAmount,
 		PriceCurrency: payment.PriceCurrency.String(),
-		ActuallyPaid:  payment.PaymentStates[0].ActuallyPaid,
+		ActuallyPaid:  payment.PaymentStates[0].ActuallyPaid.String(),
 		CallbackUrl:   payment.CallbackUrl,
 		InvoiceUrl:    utils.Opts.PaymentBaseUrl + payment.ID.String(),
 		PaymentState:  payment.PaymentStates[0].PaymentState.String(),

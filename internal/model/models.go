@@ -1,6 +1,10 @@
 package model
 
 import (
+	"database/sql/driver"
+	"fmt"
+	"math/big"
+	"reflect"
 	"time"
 
 	"github.com/CHainGate/backend/pkg/enum"
@@ -72,7 +76,60 @@ type Payment struct {
 type PaymentState struct {
 	Base
 	PaymentId    uuid.UUID `gorm:"type:uuid"`
-	PayAmount    string
-	ActuallyPaid string
+	PayAmount    *BigInt   `gorm:"type:numeric"`
+	ActuallyPaid *BigInt   `gorm:"type:numeric"`
 	PaymentState enum.State
+}
+
+type BigInt struct {
+	big.Int
+}
+
+func NewBigIntFromInt(value int64) *BigInt {
+	x := new(big.Int).SetInt64(value)
+	return NewBigInt(x)
+}
+
+func NewBigIntFromString(value string) *BigInt {
+	x, ok := new(big.Int).SetString(value, 10)
+	if !ok {
+		fmt.Println("SetString: error")
+		return NewBigIntFromInt(0)
+	}
+	return NewBigInt(x)
+}
+
+func NewBigInt(value *big.Int) *BigInt {
+	return &BigInt{Int: *value}
+}
+
+func (bigInt *BigInt) Value() (driver.Value, error) {
+	if bigInt == nil {
+		return "null", nil
+	}
+	return bigInt.String(), nil
+}
+
+func (bigInt *BigInt) Scan(val interface{}) error {
+	if val == nil {
+		return nil
+	}
+	var data string
+	switch v := val.(type) {
+	case []byte:
+		data = string(v)
+	case string:
+		data = v
+	case int64:
+		*bigInt = *NewBigIntFromInt(v)
+		return nil
+	default:
+		return fmt.Errorf("bigint: can't convert %s type to *big.Int", reflect.TypeOf(val).Kind())
+	}
+	bigI, ok := new(big.Int).SetString(data, 10)
+	if !ok {
+		return fmt.Errorf("not a valid big integer: %s", data)
+	}
+	bigInt.Int = *bigI
+	return nil
 }

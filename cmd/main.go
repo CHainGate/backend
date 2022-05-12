@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,16 +13,11 @@ import (
 	"github.com/CHainGate/backend/internal/service/publicService"
 	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/internalApi"
-	"github.com/CHainGate/backend/pkg/enum"
 	"github.com/CHainGate/backend/publicApi"
 	"github.com/CHainGate/backend/websocket"
 	"github.com/google/uuid"
 	"github.com/rs/cors"
 )
-
-type CurrencySelection struct {
-	Currency string `json:"currency"`
-}
 
 var pools = make(map[uuid.UUID]*websocket.Pool)
 
@@ -89,46 +83,9 @@ func main() {
 			go pool.Start()
 			pools[paymentId] = pool
 		}
-		serveWs(pool, w, r, publicPaymentService, paymentRepo, paymentId)
+		websocket.ServeWs(pool, w, r, publicPaymentService, paymentRepo, paymentId)
 	})
 
 	log.Println("Starting backend-service on port " + strconv.Itoa(utils.Opts.ServerPort))
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(utils.Opts.ServerPort), nil))
-}
-
-func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request, publicPaymentService service.IPublicPaymentService, paymentRepository repository.IPaymentRepository, paymentId uuid.UUID) {
-	fmt.Println("WebSocket Endpoint Hit")
-	conn, err := websocket.Upgrade(w, r)
-	if err != nil {
-		fmt.Fprintf(w, "%+v\n", err)
-	}
-
-	client := &websocket.Client{
-		Conn: conn,
-		Pool: pool,
-	}
-
-	pool.Register <- client
-
-	payment, err := paymentRepository.FindByPaymentId(paymentId)
-	if err != nil {
-		fmt.Fprintf(w, "%+v\n", err)
-	}
-
-	state := payment.PaymentStates[0].PaymentState
-
-	switch state {
-	case enum.CurrencySelection:
-		client.SendInitialCoins()
-		currency := client.Read()
-		payCurrency, _ := enum.ParseStringToCryptoCurrencyEnum(currency)
-		publicPaymentService.HandleNewInvoice(payment, payCurrency)
-		client.SendWaiting()
-	case enum.Waiting:
-		client.SendWaiting()
-	case enum.Paid:
-		client.SendReceivedTX()
-	case enum.Confirmed:
-		client.SendConfirmed()
-	}
 }

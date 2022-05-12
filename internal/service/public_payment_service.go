@@ -46,7 +46,7 @@ func (s *publicPaymentService) HandleNewInvoice(initialPayment *model.Payment, c
 		return nil, err
 	}
 
-	payment, err := s.handleEthClientResponseUpdate(paymentResponse, initialPayment, currency)
+	payment, err := s.handleEthClientResponseUpdate(paymentResponse, initialPayment)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,8 @@ func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.Paymen
 	}
 	initialState := model.PaymentState{
 		PaymentState: paymentState,
-		PayAmount:    resp.PayAmount,
-		ActuallyPaid: "0",
+		PayAmount:    model.NewBigIntFromString(resp.PayAmount),
+		ActuallyPaid: model.NewBigIntFromInt(0),
 	}
 
 	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(resp.PriceCurrency)
@@ -105,7 +105,7 @@ func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.Paymen
 	return &payment, nil
 }
 
-func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.PaymentResponse, payment *model.Payment, currency enum.CryptoCurrency) (*model.Payment, error) {
+func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.PaymentResponse, payment *model.Payment) (*model.Payment, error) {
 	blockChainPaymentId, err := uuid.Parse(resp.PaymentId)
 	if err != nil {
 		return nil, err
@@ -117,8 +117,19 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 	}
 	initialState := model.PaymentState{
 		PaymentState: paymentState,
-		PayAmount:    resp.PayAmount,
-		ActuallyPaid: "0",
+		PayAmount:    model.NewBigIntFromString(resp.PayAmount),
+		ActuallyPaid: model.NewBigIntFromInt(0),
+	}
+
+	m, err := s.merchantRepository.FindById(payment.MerchantId)
+	if err != nil {
+		return nil, err
+	}
+	var wallet model.Wallet
+	for _, w := range m.Wallets {
+		if payment.Mode == w.Mode && w.Currency == payment.PayCurrency {
+			wallet = w
+		}
 	}
 
 	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(resp.PriceCurrency)
@@ -134,6 +145,7 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 	payment.PayCurrency = payCurrency
 	payment.BlockchainPaymentId = blockChainPaymentId
 	payment.PayAddress = resp.PayAddress
+	payment.Wallet = wallet
 
 	err = s.internalPaymentService.AddNewPaymentState(payment, initialState)
 	if err != nil {

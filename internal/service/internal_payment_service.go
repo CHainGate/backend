@@ -67,8 +67,8 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 	}
 	newPaymentState := model.PaymentState{
 		PaymentState: paymentState,
-		ActuallyPaid: payment.ActuallyPaid,
-		PayAmount:    payment.PayAmount,
+		ActuallyPaid: model.NewBigIntFromString(payment.ActuallyPaid),
+		PayAmount:    model.NewBigIntFromString(payment.PayAmount),
 	}
 
 	currentPayment.PaymentStates = append(currentPayment.PaymentStates, newPaymentState)
@@ -99,9 +99,9 @@ func callWebhook(payment *model.Payment) error {
 			PayAddress:    payment.PayAddress,
 			PriceAmount:   payment.PriceAmount,
 			PriceCurrency: payment.PriceCurrency.String(),
-			PayAmount:     currentState.PayAmount,
+			PayAmount:     currentState.PayAmount.String(),
 			PayCurrency:   payment.PayCurrency.String(),
-			ActuallyPaid:  currentState.ActuallyPaid,
+			ActuallyPaid:  currentState.ActuallyPaid.String(),
 			PaymentStatus: currentState.PaymentState.String(),
 			CreatedAt:     payment.CreatedAt,
 			UpdatedAt:     payment.UpdatedAt,
