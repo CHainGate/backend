@@ -65,7 +65,7 @@ func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.Paymen
 		Address: "asdwar88asd",
 	}*/
 
-	paymentState, ok := enum.ParseStringToStateEnum(resp.PaymentStatus)
+	paymentState, ok := enum.ParseStringToStateEnum(*resp.PaymentState)
 	if !ok {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 		return nil, err
 	}
 
-	paymentState, ok := enum.ParseStringToStateEnum(resp.PaymentStatus)
+	paymentState, ok := enum.ParseStringToStateEnum(*resp.PaymentState)
 	if !ok {
 		return nil, err
 	}

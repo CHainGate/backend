@@ -102,7 +102,7 @@ func callWebhook(payment *model.Payment) error {
 			PayAmount:     currentState.PayAmount.String(),
 			PayCurrency:   payment.PayCurrency.String(),
 			ActuallyPaid:  currentState.ActuallyPaid.String(),
-			PaymentStatus: currentState.PaymentState.String(),
+			PaymentState:  currentState.PaymentState.String(),
 			CreatedAt:     payment.CreatedAt,
 			UpdatedAt:     payment.UpdatedAt,
 		},
