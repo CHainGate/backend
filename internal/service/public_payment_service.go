@@ -41,6 +41,17 @@ func (s *publicPaymentService) HandleNewPayment(priceCurrency enum.FiatCurrency,
 }
 
 func (s *publicPaymentService) HandleNewInvoice(initialPayment *model.Payment, currency enum.CryptoCurrency) (*model.Payment, error) {
+	m, err := s.merchantRepository.FindById(initialPayment.MerchantId)
+	if err != nil {
+		return nil, err
+	}
+	var wallet model.Wallet
+	for _, w := range m.Wallets {
+		if initialPayment.Mode == w.Mode && w.Currency == currency {
+			wallet = w
+		}
+	}
+	initialPayment.Wallet = &wallet
 	paymentResponse, err := createEthPayment(initialPayment.PriceCurrency, initialPayment.PriceAmount, initialPayment.Wallet.Address, initialPayment.Mode)
 	if err != nil {
 		return nil, err
@@ -92,7 +103,7 @@ func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.Paymen
 		PaymentStates:       []model.PaymentState{initialState},
 		CallbackUrl:         callbackUrl,
 		PayAddress:          resp.PayAddress, //TODO: currently not set from eth service
-		Wallet:              merchant.Wallets[0],
+		Wallet:              &merchant.Wallets[0],
 	}
 	payment.ID = uuid.New()
 
@@ -121,17 +132,6 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 		ActuallyPaid: model.NewBigIntFromInt(0),
 	}
 
-	m, err := s.merchantRepository.FindById(payment.MerchantId)
-	if err != nil {
-		return nil, err
-	}
-	var wallet model.Wallet
-	for _, w := range m.Wallets {
-		if payment.Mode == w.Mode && w.Currency == payment.PayCurrency {
-			wallet = w
-		}
-	}
-
 	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(resp.PriceCurrency)
 	if !ok {
 		return nil, err
@@ -145,7 +145,6 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 	payment.PayCurrency = payCurrency
 	payment.BlockchainPaymentId = blockChainPaymentId
 	payment.PayAddress = resp.PayAddress
-	payment.Wallet = wallet
 
 	err = s.internalPaymentService.AddNewPaymentState(payment, initialState)
 	if err != nil {

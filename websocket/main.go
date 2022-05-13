@@ -2,11 +2,12 @@ package websocket
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/service"
 	"github.com/CHainGate/backend/pkg/enum"
 	"github.com/google/uuid"
-	"net/http"
 )
 
 func ServeWs(pool *Pool, w http.ResponseWriter, r *http.Request, publicPaymentService service.IPublicPaymentService, paymentRepository repository.IPaymentRepository, paymentId uuid.UUID) {

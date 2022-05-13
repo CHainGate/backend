@@ -225,10 +225,5 @@ components:
         price_amount:
           type: number
           format: double
-        pay_currency:
-          type: string
-          enum:
-            - eth
-            - btc
         callback_url:
           type: string
