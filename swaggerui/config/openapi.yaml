@@ -507,17 +507,14 @@ components:
             - usd
             - chf
         pay_amount:
-          type: number
-          format: double
+          type: string
         pay_currency:
           type: string
           enum:
             - eth
             - btc
         actually_paid:
-          type: number
-          format: double
-          nullable: true
+          type: string
         payment_state:
           type: string
           enum:

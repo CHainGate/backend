@@ -48,9 +48,11 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 	if !ok {
 	}
 
+	payCurrency, ok := enum.ParseStringToCryptoCurrencyEnum(paymentRequestDto.PayCurrency)
+
 	var wallet string
 	for _, w := range merchant.Wallets {
-		if apiKey.Mode == w.Mode {
+		if apiKey.Mode == w.Mode && payCurrency == w.Currency {
 			wallet = w.Address
 		}
 	}
@@ -65,9 +67,9 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		PayAddress:    payment.PayAddress,
 		PriceAmount:   payment.PriceAmount,
 		PriceCurrency: payment.PriceCurrency.String(),
-		PayAmount:     payment.PaymentStates[0].PayAmount,
+		PayAmount:     payment.PaymentStates[0].PayAmount.String(),
 		PayCurrency:   payment.PayCurrency.String(),
-		ActuallyPaid:  &payment.PaymentStates[0].ActuallyPaid,
+		ActuallyPaid:  payment.PaymentStates[0].ActuallyPaid.String(),
 		CallbackUrl:   payment.CallbackUrl,
 		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
 		CreatedAt:     payment.CreatedAt,

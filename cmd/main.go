@@ -5,20 +5,21 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/CHainGate/backend/internal/service"
-
-	"github.com/CHainGate/backend/internal/repository"
-
 	"github.com/CHainGate/backend/configApi"
+	"github.com/CHainGate/backend/internal/repository"
+	"github.com/CHainGate/backend/internal/service"
 	"github.com/CHainGate/backend/internal/service/configService"
 	"github.com/CHainGate/backend/internal/service/internalService"
 	"github.com/CHainGate/backend/internal/service/publicService"
 	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/internalApi"
 	"github.com/CHainGate/backend/publicApi"
-
+	"github.com/CHainGate/backend/websocket"
+	"github.com/google/uuid"
 	"github.com/rs/cors"
 )
+
+var pools = make(map[uuid.UUID]*websocket.Pool)
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
@@ -46,17 +47,19 @@ func main() {
 
 	configRouter := configApi.NewRouter(ApiKeyApiController, AuthenticationApiController, LoggingApiController, WalletApiController, ConfigApiController)
 
-	// public api
-	publicPaymentService := service.NewPublicPaymentService(merchantRepo)
-	PaymentApiService := publicService.NewPaymentApiService(publicPaymentService, authService)
-	PaymentApiController := publicApi.NewPaymentApiController(PaymentApiService)
-
-	publicRouter := publicApi.NewRouter(PaymentApiController)
-
 	// internal api
 	internalPaymentService := service.NewInternalPaymentService(paymentRepo)
 	PaymentUpdateApiService := internalService.NewPaymentUpdateApiService(internalPaymentService)
 	PaymentUpdateApiController := internalApi.NewPaymentUpdateApiController(PaymentUpdateApiService)
+
+	// public api
+	publicPaymentService := service.NewPublicPaymentService(merchantRepo, paymentRepo, internalPaymentService)
+	publicInvoiceService := publicService.NewInvoiceApiService(publicPaymentService, authService, merchantRepo)
+	PaymentApiService := publicService.NewPaymentApiService(publicPaymentService, authService)
+	PaymentApiController := publicApi.NewPaymentApiController(PaymentApiService)
+	InvoiceApiController := publicApi.NewInvoiceApiController(publicInvoiceService)
+
+	publicRouter := publicApi.NewRouter(PaymentApiController, InvoiceApiController)
 
 	internalRouter := internalApi.NewRouter(PaymentUpdateApiController)
 
@@ -71,6 +74,17 @@ func main() {
 	http.Handle("/api/public/swaggerui/", http.StripPrefix("/api/public/swaggerui/", publicFs))
 	internalFs := http.FileServer(http.Dir("./swaggerui/internal"))
 	http.Handle("/api/internal/swaggerui/", http.StripPrefix("/api/internal/swaggerui/", internalFs))
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		paymentIdParam := r.URL.Query().Get("pid")
+		paymentId := uuid.MustParse(paymentIdParam)
+		pool := pools[paymentId]
+		if pool == nil {
+			pool = websocket.NewPool()
+			go pool.Start()
+			pools[paymentId] = pool
+		}
+		websocket.ServeWs(pool, w, r, publicPaymentService, paymentRepo, paymentId)
+	})
 
 	log.Println("Starting backend-service on port " + strconv.Itoa(utils.Opts.ServerPort))
 	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(utils.Opts.ServerPort), nil))
