@@ -536,3 +536,5 @@ components:
           type: string
         shortName:
           type: string
+        conversion_factor:
+          type: string

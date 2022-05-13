@@ -42,8 +42,9 @@ func (s *ConfigApiService) GetConfig(_ context.Context, authorization string) (c
 	supportedCryptoCurrencies := make([]configApi.Currency, 0)
 	for _, c := range currencyDetails {
 		supportedCryptoCurrencies = append(supportedCryptoCurrencies, configApi.Currency{
-			Name:      c.Name,
-			ShortName: c.ShortName,
+			Name:             c.Name,
+			ShortName:        c.ShortName,
+			ConversionFactor: c.ConversionFactor,
 		})
 	}
 
