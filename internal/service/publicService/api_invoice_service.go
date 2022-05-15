@@ -65,6 +65,7 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 		Mode:          apiKey.Mode,
 		PriceAmount:   invoiceRequestDto.PriceAmount,
 		PriceCurrency: priceCurrency,
+		PayCurrency:   enum.NOT_SELECTED,
 		PaymentStates: []model.PaymentState{initialState},
 		CallbackUrl:   invoiceRequestDto.CallbackUrl,
 	}

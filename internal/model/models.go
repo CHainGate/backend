@@ -62,8 +62,8 @@ type Payment struct {
 	Base
 	BlockchainPaymentId uuid.UUID `gorm:"type:uuid"`
 	MerchantId          uuid.UUID `gorm:"type:uuid"`
-	Wallet              Wallet
-	WalletId            uuid.UUID `gorm:"type:uuid"`
+	Wallet              *Wallet
+	WalletId            *uuid.UUID `gorm:"type:uuid"`
 	Mode                enum.Mode
 	PriceAmount         float64 `gorm:"type:numeric"`
 	PriceCurrency       enum.FiatCurrency
