@@ -21,6 +21,7 @@ type OptsType struct {
 	EmailVerificationUrl string
 	ProxyBaseUrl         string
 	EthereumBaseUrl      string
+	BitcoinBaseUrl       string
 	PaymentBaseUrl       string
 }
 
@@ -47,6 +48,7 @@ func NewOpts() {
 	flag.StringVar(&o.EmailVerificationUrl, "EMAIL_VERIFICATION_URL", lookupEnv("EMAIL_VERIFICATION_URL"), "Email Verification URL")
 	flag.StringVar(&o.ProxyBaseUrl, "PROXY_BASE_URL", lookupEnv("PROXY_BASE_URL", "http://localhost:8001/api"), "Proxy base url")
 	flag.StringVar(&o.EthereumBaseUrl, "ETHEREUM_BASE_URL", lookupEnv("ETHEREUM_BASE_URL", "http://localhost:9000/api"), "Ethereum base url")
+	flag.StringVar(&o.BitcoinBaseUrl, "BITCOIN_BASE_URL", lookupEnv("BITCOIN_BASE_URL", "http://localhost:9001/api"), "Bitcoin base url")
 	flag.StringVar(&o.PaymentBaseUrl, "PAYMENT_URL", lookupEnv("PAYMENT_URL", "http://localhost:3000/payment/"), "Payment base URL")
 
 	Opts = o

@@ -57,7 +57,7 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		}
 	}
 
-	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, wallet, apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
+	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, payCurrency, wallet, apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
 	if err != nil {
 		return publicApi.ImplResponse{}, err
 	}
