@@ -1,43 +1,14 @@
 package websocket
 
-import "fmt"
+import (
+	"github.com/CHainGate/backend/internal/model"
+)
 
-type Pool struct {
-	Register   chan *Client
-	Unregister chan *Client
-	Clients    map[*Client]bool
-	Broadcast  chan Message
-}
-
-func NewPool() *Pool {
-	return &Pool{
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		Clients:    make(map[*Client]bool),
-		Broadcast:  make(chan Message),
-	}
-}
-
-func (pool *Pool) Start() {
-	for {
-		select {
-		case client := <-pool.Register:
-			pool.Clients[client] = true
-			fmt.Println("Size of Connection Pool: ", len(pool.Clients))
-			break
-		case client := <-pool.Unregister:
-			delete(pool.Clients, client)
-			fmt.Println("Size of Connection Pool: ", len(pool.Clients))
-			break
-		case message := <-pool.Broadcast:
-			fmt.Println("Sending message to all clients in Pool")
-			for client, _ := range pool.Clients {
-				if err := client.Conn.WriteJSON(message); err != nil {
-					fmt.Println(err)
-					client.Pool.Unregister <- client
-					client.Conn.Close()
-				}
-			}
-		}
+func NewPool() *model.Pool {
+	return &model.Pool{
+		Register:   make(chan *model.Client),
+		Unregister: make(chan *model.Client),
+		Clients:    make(map[*model.Client]bool),
+		Broadcast:  make(chan model.Message),
 	}
 }

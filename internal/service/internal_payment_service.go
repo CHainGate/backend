@@ -6,6 +6,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/CHainGate/backend/internal/config"
 	"io"
 
 	"github.com/CHainGate/backend/internal/utils"
@@ -82,6 +83,9 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 	if err != nil {
 		return err
 	}
+
+	message := model.Message{MessageType: paymentState.String(), Body: enum.GetCryptoCurrencyDetails()}
+	config.Pools[currentPayment.ID].Broadcast <- message
 
 	err = callWebhook(currentPayment)
 	if err != nil {
