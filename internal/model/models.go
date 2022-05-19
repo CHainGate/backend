@@ -3,6 +3,9 @@ package model
 import (
 	"database/sql/driver"
 	"fmt"
+	"github.com/gorilla/websocket"
+	"golang.org/x/exp/slices"
+	"log"
 	"math/big"
 	"reflect"
 	"time"
@@ -83,6 +86,109 @@ type PaymentState struct {
 
 type BigInt struct {
 	big.Int
+}
+
+type Message struct {
+	Type        string      `json:"type"`
+	MessageType string      `json:"messageType"`
+	Body        interface{} `json:"body"`
+}
+type Pool struct {
+	Register   chan *Client
+	Unregister chan *Client
+	Clients    map[*Client]bool
+	Broadcast  chan Message
+}
+
+type Client struct {
+	ID   string
+	Conn *websocket.Conn
+	Pool *Pool
+}
+
+type SocketBody struct {
+	Currency   string
+	PayAddress string
+	PayAmount  string
+	ExpireTime time.Time
+}
+
+func (c *Client) SendInitialCoins() {
+	message := Message{MessageType: enum.CurrencySelection.String(), Body: enum.GetCryptoCurrencyDetails()}
+	c.Conn.WriteJSON(message)
+}
+
+func getWaitingCreateDate(payment *Payment) time.Time {
+	index := slices.IndexFunc(payment.PaymentStates, func(ps PaymentState) bool { return ps.PaymentState == enum.Waiting })
+	return payment.PaymentStates[index].CreatedAt
+}
+
+func (c *Client) SendWaiting(p *Payment) {
+	body := SocketBody{
+		Currency:   p.PayCurrency.String(),
+		PayAddress: p.PayAddress,
+		PayAmount:  p.PaymentStates[0].PayAmount.String(),
+		ExpireTime: getWaitingCreateDate(p).Add(15 * time.Minute),
+	}
+	message := Message{MessageType: enum.Waiting.String(), Body: body}
+	c.Pool.Broadcast <- message
+}
+
+func (c *Client) SendReceivedTX() {
+	message := Message{MessageType: enum.Paid.String(), Body: enum.GetCryptoCurrencyDetails()}
+	c.Pool.Broadcast <- message
+}
+
+func (c *Client) SendConfirmed() {
+	message := Message{MessageType: enum.Confirmed.String(), Body: enum.GetCryptoCurrencyDetails()}
+	c.Pool.Broadcast <- message
+}
+
+func (c *Client) SendExpired() {
+	message := Message{MessageType: enum.Expired.String(), Body: enum.GetCryptoCurrencyDetails()}
+	c.Pool.Broadcast <- message
+}
+
+func (c *Client) Read() string {
+	selected := ""
+	for {
+		var message Message
+		err := c.Conn.ReadJSON(&message)
+		if err != nil {
+			log.Println("read failed:", err)
+			c.Pool.Unregister <- c
+			c.Conn.Close()
+			break
+		}
+		mapCurrency := message.Body.(map[string]interface{})
+		selected = mapCurrency["currency"].(string)
+		break
+	}
+	return selected
+}
+
+func (pool *Pool) Start() {
+	for {
+		select {
+		case client := <-pool.Register:
+			pool.Clients[client] = true
+			fmt.Println("Size of Connection Pool: ", len(pool.Clients))
+			break
+		case client := <-pool.Unregister:
+			delete(pool.Clients, client)
+			fmt.Println("Size of Connection Pool: ", len(pool.Clients))
+			break
+		case message := <-pool.Broadcast:
+			fmt.Println("Sending message to all clients in Pool")
+			for client, _ := range pool.Clients {
+				if err := client.Conn.WriteJSON(message); err != nil {
+					fmt.Println(err)
+					client.Pool.Unregister <- client
+					client.Conn.Close()
+				}
+			}
+		}
+	}
 }
 
 func NewBigIntFromInt(value int64) *BigInt {

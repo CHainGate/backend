@@ -1,6 +1,6 @@
 module github.com/CHainGate/backend
 
-go 1.17
+go 1.18
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
@@ -11,6 +11,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/rs/cors v1.8.2
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
+	golang.org/x/exp v0.0.0-20220518171630-0b5c67f07fdf
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
 	gorm.io/driver/postgres v1.3.1
 	gorm.io/gorm v1.23.1

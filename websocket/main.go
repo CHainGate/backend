@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"fmt"
+	"github.com/CHainGate/backend/internal/model"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/repository"
@@ -10,14 +11,14 @@ import (
 	"github.com/google/uuid"
 )
 
-func ServeWs(pool *Pool, w http.ResponseWriter, r *http.Request, publicPaymentService service.IPublicPaymentService, paymentRepository repository.IPaymentRepository, paymentId uuid.UUID) {
+func ServeWs(pool *model.Pool, w http.ResponseWriter, r *http.Request, publicPaymentService service.IPublicPaymentService, paymentRepository repository.IPaymentRepository, paymentId uuid.UUID) {
 	fmt.Println("WebSocket Endpoint Hit")
 	conn, err := Upgrade(w, r)
 	if err != nil {
 		fmt.Fprintf(w, "%+v\n", err)
 	}
 
-	client := &Client{
+	client := &model.Client{
 		Conn: conn,
 		Pool: pool,
 	}
@@ -37,12 +38,19 @@ func ServeWs(pool *Pool, w http.ResponseWriter, r *http.Request, publicPaymentSe
 		currency := client.Read()
 		payCurrency, _ := enum.ParseStringToCryptoCurrencyEnum(currency)
 		publicPaymentService.HandleNewInvoice(payment, payCurrency)
-		client.SendWaiting()
+		client.SendWaiting(payment)
 	case enum.Waiting:
-		client.SendWaiting()
+		client.SendWaiting(payment)
 	case enum.Paid:
 		client.SendReceivedTX()
 	case enum.Confirmed:
 		client.SendConfirmed()
+	case enum.Forwarded:
+		client.SendConfirmed()
+	case enum.Finished:
+		client.SendConfirmed()
+	case enum.Expired:
+		client.SendExpired()
 	}
+	client.Read()
 }

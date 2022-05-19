@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/CHainGate/backend/internal/config"
 	"log"
 	"net/http"
 	"strconv"
@@ -18,8 +19,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/cors"
 )
-
-var pools = make(map[uuid.UUID]*websocket.Pool)
 
 func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
@@ -77,11 +76,11 @@ func main() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		paymentIdParam := r.URL.Query().Get("pid")
 		paymentId := uuid.MustParse(paymentIdParam)
-		pool := pools[paymentId]
+		pool := config.Pools[paymentId]
 		if pool == nil {
 			pool = websocket.NewPool()
 			go pool.Start()
-			pools[paymentId] = pool
+			config.Pools[paymentId] = pool
 		}
 		websocket.ServeWs(pool, w, r, publicPaymentService, paymentRepo, paymentId)
 	})

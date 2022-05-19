@@ -11,7 +11,6 @@ package configService
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/CHainGate/backend/configApi"
@@ -33,11 +32,6 @@ func NewConfigApiService(authenticationService service.IAuthenticationService) c
 
 // GetConfig - Get the configuration
 func (s *ConfigApiService) GetConfig(_ context.Context, authorization string) (configApi.ImplResponse, error) {
-	_, err := s.authenticationService.HandleJwtAuthentication(authorization)
-	if err != nil {
-		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
-	}
-
 	currencyDetails := enum.GetCryptoCurrencyDetails()
 	supportedCryptoCurrencies := make([]configApi.Currency, 0)
 	for _, c := range currencyDetails {
