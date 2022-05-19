@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"math/big"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -227,7 +226,7 @@ func (s *authenticationService) CreateMerchant(registerRequestDto configApi.Regi
 		IsActive:          false,
 	}
 
-	err = sendVerificationEmail(&merchant, nil)
+	err = sendVerificationEmail(&merchant)
 	if err != nil {
 		return err
 	}
@@ -249,7 +248,7 @@ func createJwtToken(issuer string, duration time.Duration) (string, error) {
 	return claims.SignedString([]byte(utils.Opts.JwtSecret))
 }
 
-func sendVerificationEmail(merchant *model.Merchant, client *http.Client) error {
+func sendVerificationEmail(merchant *model.Merchant) error {
 	baseUrl, err := url.Parse(utils.Opts.EmailVerificationUrl)
 	if err != nil {
 		return err
@@ -263,7 +262,6 @@ func sendVerificationEmail(merchant *model.Merchant, client *http.Client) error 
 	content := "Please Verify your E-Mail: " + baseUrl.String()
 	email := *proxyClientApi.NewEmailRequestDto(merchant.FirstName, merchant.Email, "Verify your E-Mail", content)
 	configuration := NewConfiguration()
-	configuration.HTTPClient = client
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err = apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
 	if err != nil {

@@ -1,11 +1,8 @@
 package service
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
+	"gopkg.in/h2non/gock.v1"
 	"log"
-	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -14,7 +11,6 @@ import (
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/utils"
 	"github.com/CHainGate/backend/pkg/enum"
-	"github.com/CHainGate/backend/proxyClientApi"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
@@ -39,11 +35,6 @@ type JwtTest struct {
 	token  string
 	issuer string
 	exp    time.Time
-}
-
-type Interceptor struct {
-	core         http.RoundTripper
-	testFunction func(r *http.Request) (*http.Request, error)
 }
 
 func setup() {
@@ -264,35 +255,19 @@ func TestHandleVerification(t *testing.T) {
 }*/
 
 func TestSendVerificationEmail(t *testing.T) {
-	test := func(r *http.Request) (*http.Request, error) {
-		expected := proxyClientApi.EmailRequestDto{
-			Name:    "Momo",
-			EmailTo: "momo@mail.com",
-			Subject: "Verify your E-Mail",
-			Content: "Please Verify your E-Mail: ?code=123456&email=momo%40mail.com",
-		}
+	defer gock.Off() // Flush pending mocks after test execution
 
-		var actually proxyClientApi.EmailRequestDto
-		err := json.NewDecoder(r.Body).Decode(&actually)
-		if err != nil {
-			return nil, err
-		}
+	gock.New("localhost:8001").
+		Post("/api/email").
+		MatchType("json").
+		JSON(map[string]string{
+			"name":     "Momo",
+			"email_to": "momo@mail.com",
+			"subject":  "Verify your E-Mail",
+			"content":  "Please Verify your E-Mail: ?code=123456&email=momo%40mail.com"}).
+		Reply(200)
 
-		if expected != actually {
-			msg := fmt.Sprintf("Wrong request body. expected %v, but got %v", expected, actually)
-			return nil, errors.New(msg)
-		}
-
-		return nil, nil
-	}
-	httpClient := http.Client{
-		Transport: Interceptor{
-			core:         http.DefaultTransport,
-			testFunction: test,
-		},
-	}
-
-	err := sendVerificationEmail(testMerchant, &httpClient)
+	err := sendVerificationEmail(testMerchant)
 	if err != nil {
 		t.Error(err)
 	}
@@ -348,16 +323,4 @@ func TestGetApiKeyHint(t *testing.T) {
 	if hint != expected {
 		t.Errorf("expected hint %s, but got %s", expected, hint)
 	}
-}
-
-func (i Interceptor) RoundTrip(r *http.Request) (*http.Response, error) {
-	defer func() {
-		_ = r.Body.Close()
-	}()
-	_, err := i.testFunction(r)
-
-	if err != nil {
-		return nil, err
-	}
-	return &http.Response{StatusCode: http.StatusOK}, nil
 }
