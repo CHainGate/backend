@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"golang.org/x/exp/slices"
 	"log"
 	"math/big"
 	"reflect"
@@ -117,12 +118,17 @@ func (c *Client) SendInitialCoins() {
 	c.Conn.WriteJSON(message)
 }
 
+func getWaitingCreateDate(payment *Payment) time.Time {
+	index := slices.IndexFunc(payment.PaymentStates, func(ps PaymentState) bool { return ps.PaymentState == enum.Waiting })
+	return payment.PaymentStates[index].CreatedAt
+}
+
 func (c *Client) SendWaiting(p *Payment) {
 	body := SocketBody{
 		Currency:   p.PayCurrency.String(),
 		PayAddress: p.PayAddress,
 		PayAmount:  p.PaymentStates[0].PayAmount.String(),
-		ExpireTime: p.CreatedAt.Add(15 * time.Minute),
+		ExpireTime: getWaitingCreateDate(p).Add(15 * time.Minute),
 	}
 	message := Message{MessageType: enum.Waiting.String(), Body: body}
 	c.Pool.Broadcast <- message
@@ -135,6 +141,11 @@ func (c *Client) SendReceivedTX() {
 
 func (c *Client) SendConfirmed() {
 	message := Message{MessageType: enum.Confirmed.String(), Body: enum.GetCryptoCurrencyDetails()}
+	c.Pool.Broadcast <- message
+}
+
+func (c *Client) SendExpired() {
+	message := Message{MessageType: enum.Expired.String(), Body: enum.GetCryptoCurrencyDetails()}
 	c.Pool.Broadcast <- message
 }
 

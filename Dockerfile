@@ -13,6 +13,7 @@ COPY cmd/*.go ./cmd/
 COPY internal/ ./internal/
 COPY swaggerui/ ./swaggerui/
 COPY pkg/ ./pkg/
+COPY websocket/ ./websocket/
 COPY wait-for-it.sh ./
 COPY .openapi-generator-ignore ./
 

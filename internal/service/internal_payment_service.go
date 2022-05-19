@@ -85,7 +85,9 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 	}
 
 	message := model.Message{MessageType: paymentState.String(), Body: enum.GetCryptoCurrencyDetails()}
-	config.Pools[currentPayment.ID].Broadcast <- message
+	if pool, ok := config.Pools[currentPayment.ID]; ok {
+		pool.Broadcast <- message
+	}
 
 	err = callWebhook(currentPayment)
 	if err != nil {
