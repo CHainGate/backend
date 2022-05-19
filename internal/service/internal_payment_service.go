@@ -6,7 +6,11 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"gorm.io/gorm"
 	"io"
+	"log"
 
 	"github.com/CHainGate/backend/internal/utils"
 
@@ -58,7 +62,20 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 	}
 	currentPayment, err := s.paymentRepository.FindByBlockchainIdAndCurrency(payment.PaymentId, payCurrency)
 	if err != nil {
+		// if the blockchain service creates a new payment but the backend cannot save it to the database
+		// we will get an expired update after 15min which is fine and can be ignored, because the buyer
+		// never sees the pay address
+		if errors.Is(err, gorm.ErrRecordNotFound) && payment.PaymentState == enum.Expired.String() {
+			return nil
+		}
 		return err
+	}
+
+	for _, state := range currentPayment.PaymentStates {
+		if state.PaymentState.String() == payment.PaymentState {
+			log.Println(fmt.Sprintf("Payment %s with state %s already updated", payment.PaymentId, payment.PaymentState))
+			return nil
+		}
 	}
 
 	paymentState, ok := enum.ParseStringToStateEnum(payment.PaymentState)
