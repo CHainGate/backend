@@ -32,7 +32,7 @@ func TestEncrypt(t *testing.T) {
 
 // Do not parallelize this test! Unless there is a way to mock aes to generate the same encryption text
 func TestDecrypt(t *testing.T) {
-	decryptedMessage, err := decrypt(aesTest.key, aesTest.encryptedMessage)
+	decryptedMessage, err := Decrypt(aesTest.key, aesTest.encryptedMessage)
 	if err != nil {
 		t.Fatalf("Message decryption failed. Error: %s", err.Error())
 	}
@@ -66,11 +66,11 @@ func TestCreateSalt(t *testing.T) {
 }
 
 func TestGenerateApiKey(t *testing.T) {
-	key1, err := generateApiKey()
+	key1, err := generateApiKeySecret()
 	if err != nil {
 		t.Errorf("Generate api key failed. Error: %s", err.Error())
 	}
-	key2, err := generateApiKey()
+	key2, err := generateApiKeySecret()
 	if err != nil {
 		t.Errorf("Generate api key failed. Error: %s", err.Error())
 	}

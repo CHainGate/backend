@@ -2,8 +2,9 @@ package websocket
 
 import (
 	"fmt"
-	"github.com/CHainGate/backend/internal/model"
 	"net/http"
+
+	"github.com/CHainGate/backend/internal/model"
 
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/internal/service"

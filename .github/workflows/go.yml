@@ -31,6 +31,8 @@ jobs:
       run: docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i https://raw.githubusercontent.com/CHainGate/proxy-service/main/swaggerui/openapi.yaml -g go -o /local/proxyClientApi --ignore-file-override=/local/.openapi-generator-ignore --additional-properties=sourceFolder=proxyClientApi,packageName=proxyClientApi
     - name: generate eth openApi client code
       run: docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i https://raw.githubusercontent.com/CHainGate/ethereum-service/main/swaggerui/openapi.yaml -g go -o /local/ethClientApi --ignore-file-override=/local/.openapi-generator-ignore --additional-properties=sourceFolder=ethClientApi,packageName=ethClientApi
+    - name: generate btc openApi client code
+      run: docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i https://raw.githubusercontent.com/CHainGate/bitcoin-service/main/swaggerui/openapi.yaml -g go -o /local/btcClientApi --ignore-file-override=/local/.openapi-generator-ignore --additional-properties=sourceFolder=btcClientApi,packageName=btcClientApi
     - name: install goimports
       run: go install golang.org/x/tools/cmd/goimports@latest
     - name: change permissions

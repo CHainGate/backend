@@ -43,11 +43,6 @@ func (s *AuthenticationApiService) Login(_ context.Context, loginRequestDto conf
 	return configApi.Response(http.StatusCreated, tokenDto), nil
 }
 
-// Logout - Logs out the merchant
-func (s *AuthenticationApiService) Logout(_ context.Context) (configApi.ImplResponse, error) {
-	return configApi.Response(http.StatusNotImplemented, nil), errors.New("Logout method not implemented")
-}
-
 // RegisterMerchant - Merchant registration
 func (s *AuthenticationApiService) RegisterMerchant(_ context.Context, registerRequestDto configApi.RegisterRequestDto) (configApi.ImplResponse, error) {
 	err := s.authenticationService.CreateMerchant(registerRequestDto)

@@ -18,6 +18,8 @@ func TestNewOpts(t *testing.T) {
 		EmailVerificationUrl: "https://send.email.ch/mail",
 		ProxyBaseUrl:         "http://localhost:8001/api",
 		EthereumBaseUrl:      "http://localhost:9000/api",
+		BitcoinBaseUrl:       "http://localhost:9001/api",
+		PaymentBaseUrl:       "http://localhost:3000/payment/",
 	}
 
 	_ = os.Setenv("SERVER_PORT", "8000")

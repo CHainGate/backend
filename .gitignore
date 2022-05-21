@@ -21,5 +21,6 @@ internalApi
 publicApi
 proxyClientApi
 ethClientApi
+btcClientApi
 .openapi-generator
 api

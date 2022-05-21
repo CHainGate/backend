@@ -8,3 +8,4 @@ api/
 
 /proxyClientApi/go.mod
 /ethClientApi/go.mod
+/btcClientApi/go.mod

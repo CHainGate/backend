@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"math/big"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -28,8 +27,7 @@ type IAuthenticationService interface {
 	HandleJwtAuthentication(bearer string) (*model.Merchant, error)
 	HandleLogin(email string, password string) (string, error)
 	HandleApiAuthentication(apiKey string) (*model.Merchant, *model.ApiKey, error)
-	CreateSecretApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error)
-	CreatePublicApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error)
+	CreateApiKey(mode enum.Mode) (*model.ApiKey, error)
 	CreateMerchant(registerRequestDto configApi.RegisterRequestDto) error
 	HandleVerification(email string, verificationCode int64) error
 }
@@ -84,7 +82,7 @@ func (s *authenticationService) HandleLogin(email string, password string) (stri
 }
 
 func (s *authenticationService) HandleApiAuthentication(apiKey string) (*model.Merchant, *model.ApiKey, error) {
-	decryptedApiKey, err := decrypt([]byte(utils.Opts.ApiKeySecret), apiKey)
+	decryptedApiKey, err := Decrypt([]byte(utils.Opts.ApiKeySecret), apiKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -98,21 +96,13 @@ func (s *authenticationService) HandleApiAuthentication(apiKey string) (*model.M
 		return nil, nil, err
 	}
 
-	if currentApiKey.KeyType == enum.Secret {
-		encryptedKey, err := scryptPassword(apiKeySecret, currentApiKey.Salt)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if encryptedKey != currentApiKey.SecretKey {
-			return nil, nil, errors.New("not authorized")
-		}
+	encryptedKeySecret, err := scryptPassword(apiKeySecret, currentApiKey.SecretSalt)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if currentApiKey.KeyType == enum.Public {
-		if apiKeySecret != currentApiKey.SecretKey {
-			return nil, nil, errors.New("not authorized")
-		}
+	if encryptedKeySecret != currentApiKey.Secret {
+		return nil, nil, errors.New("not authorized")
 	}
 
 	merchant, err := s.merchantRepository.FindById(currentApiKey.MerchantId)
@@ -123,58 +113,41 @@ func (s *authenticationService) HandleApiAuthentication(apiKey string) (*model.M
 	return merchant, currentApiKey, nil
 }
 
-func (s *authenticationService) CreateSecretApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error) {
-	apiSecretKey, err := generateApiKey()
+func (s *authenticationService) CreateApiKey(mode enum.Mode) (*model.ApiKey, error) {
+	apiKeySecret, err := generateApiKeySecret()
 	if err != nil {
 		return nil, err
 	}
 
 	key := model.ApiKey{
-		Mode:    mode,
-		KeyType: apiKeyType,
+		Base: model.Base{ID: uuid.New()},
+		Mode: mode,
 	}
-	key.ID = uuid.New()
 
-	salt, err := createSalt()
+	secretSalt, err := createSalt()
 	if err != nil {
 		return nil, err
 	}
 
-	apiSecureKeyEncrypted, err := scryptPassword(apiSecretKey, salt)
+	apiKeySecretEncrypted, err := scryptPassword(apiKeySecret, secretSalt)
 	if err != nil {
 		return nil, err
 	}
 
-	key.SecretKey = apiSecureKeyEncrypted
-	key.Salt = salt
+	key.Secret = apiKeySecretEncrypted
+	key.SecretSalt = secretSalt
 
-	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
+	combinedApiKey, err := getCombinedApiKey(key, apiKeySecret)
 	if err != nil {
 		return nil, err
 	}
 
-	key.ApiKey = combinedApiKey
-
-	return &key, nil
-}
-
-func (s *authenticationService) CreatePublicApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error) {
-	apiSecretKey, err := generateApiKey()
-	if err != nil {
-		return nil, err
-	}
-	key := model.ApiKey{
-		Mode:    mode,
-		KeyType: apiKeyType,
-	}
-
-	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
+	encryptedCombinedApiKey, err := encrypt([]byte(utils.Opts.ApiKeySecret), combinedApiKey)
 	if err != nil {
 		return nil, err
 	}
 
-	key.ApiKey = combinedApiKey
-	key.SecretKey = apiSecretKey
+	key.ApiKey = encryptedCombinedApiKey
 
 	return &key, nil
 }
@@ -227,7 +200,7 @@ func (s *authenticationService) CreateMerchant(registerRequestDto configApi.Regi
 		IsActive:          false,
 	}
 
-	err = sendVerificationEmail(&merchant, nil)
+	err = sendVerificationEmail(&merchant)
 	if err != nil {
 		return err
 	}
@@ -249,7 +222,7 @@ func createJwtToken(issuer string, duration time.Duration) (string, error) {
 	return claims.SignedString([]byte(utils.Opts.JwtSecret))
 }
 
-func sendVerificationEmail(merchant *model.Merchant, client *http.Client) error {
+func sendVerificationEmail(merchant *model.Merchant) error {
 	baseUrl, err := url.Parse(utils.Opts.EmailVerificationUrl)
 	if err != nil {
 		return err
@@ -262,8 +235,8 @@ func sendVerificationEmail(merchant *model.Merchant, client *http.Client) error 
 
 	content := "Please Verify your E-Mail: " + baseUrl.String()
 	email := *proxyClientApi.NewEmailRequestDto(merchant.FirstName, merchant.Email, "Verify your E-Mail", content)
-	configuration := NewConfiguration()
-	configuration.HTTPClient = client
+	configuration := proxyClientApi.NewConfiguration()
+	configuration.Servers[0].URL = utils.Opts.ProxyBaseUrl
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err = apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
 	if err != nil {
@@ -314,26 +287,4 @@ func decodeJwtToken(jwtToken string) (*jwt.RegisteredClaims, error) {
 func getCombinedApiKey(key model.ApiKey, apiSecretKey string) (string, error) {
 	combinedKey := key.ID.String() + "_" + apiSecretKey
 	return encrypt([]byte(utils.Opts.ApiKeySecret), combinedKey)
-}
-
-func getApiKeyHint(key string) string {
-	apiKeyBeginning := key[0:4]
-	apiKeyEnding := key[len(key)-4:]
-	return apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
-}
-
-func NewConfiguration() *proxyClientApi.Configuration {
-	cfg := &proxyClientApi.Configuration{
-		DefaultHeader: make(map[string]string),
-		UserAgent:     "OpenAPI-Generator/1.0.0/go",
-		Debug:         true,
-		Servers: proxyClientApi.ServerConfigurations{
-			{
-				URL:         utils.Opts.ProxyBaseUrl,
-				Description: "No description provided",
-			},
-		},
-		OperationServers: map[string]proxyClientApi.ServerConfigurations{},
-	}
-	return cfg
 }

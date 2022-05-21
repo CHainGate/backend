@@ -85,145 +85,149 @@ components:
       type: object
       required:
         - id
-        - pay_address
-        - price_currency
-        - pay_amount
-        - pay_currency
-        - actually_paid
-        - callback_url
-        - payment_state
-        - created_at
-        - updated_at
+        - payAddress
+        - priceCurrency
+        - payAmount
+        - payCurrency
+        - actuallyPaid
+        - callbackUrl
+        - paymentState
+        - createdAt
+        - updatedAt
       properties:
         id:
           type: string
           format: uuid
-        pay_address:
+        payAddress:
           type: string
-        price_amount:
+        priceAmount:
           type: number
           format: double
-        price_currency:
+        priceCurrency:
           type: string
           enum:
             - usd
             - chf
-        pay_amount:
+        payAmount:
           type: string
-        pay_currency:
+        payCurrency:
           type: string
           enum:
             - eth
             - btc
-        actually_paid:
+        actuallyPaid:
           type: string
-        callback_url:
+        callbackUrl:
           type: string
-        payment_state:
+        paymentState:
           type: string
           enum:
+            - currency_selection
             - waiting
             - partially_paid
             - paid
-            - sending
+            - confirmed
+            - forwarded
             - finished
             - expired
             - failed
-        created_at:
+        createdAt:
           type: string
           format: date-time
-        updated_at:
+        updatedAt:
           type: string
           format: date-time
     PaymentRequestDto:
       title: Payment Request DTO
       type: object
       required:
-        - price_currency
-        - price_amount
-        - pay_currency
-        - callback_url
+        - priceCurrency
+        - priceAmount
+        - payCurrency
+        - callbackUrl
       properties:
-        price_currency:
+        priceCurrency:
           type: string
           enum:
             - usd
             - chf
-        price_amount:
+        priceAmount:
           type: number
           format: double
-        pay_currency:
+        payCurrency:
           type: string
           enum:
             - eth
             - btc
-        callback_url:
+        callbackUrl:
           type: string
     InvoiceResponseDto:
       title: Invoice Response DTO
       type: object
       required:
         - id
-        - pay_address
-        - price_currency
-        - pay_amount
-        - pay_currency
-        - actually_paid
-        - callback_url
-        - payment_state
-        - created_at
-        - updated_at
+        - payAddress
+        - priceCurrency
+        - payAmount
+        - payCurrency
+        - actuallyPaid
+        - callbackUrl
+        - paymentState
+        - createdAt
+        - updatedAt
       properties:
         id:
           type: string
           format: uuid
-        pay_address:
+        payAddress:
           type: string
-        price_amount:
+        priceAmount:
           type: number
           format: double
-        price_currency:
+        priceCurrency:
           type: string
           enum:
             - usd
             - chf
-        actually_paid:
+        actuallyPaid:
           type: string
-        callback_url:
+        callbackUrl:
           type: string
-        invoice_url:
+        invoiceUrl:
           type: string
-        payment_state:
+        paymentState:
           type: string
           enum:
+            - currency_selection
             - waiting
             - partially_paid
             - paid
-            - sending
+            - confirmed
+            - forwarded
             - finished
             - expired
             - failed
-        created_at:
+        createdAt:
           type: string
           format: date-time
-        updated_at:
+        updatedAt:
           type: string
           format: date-time
     InvoiceRequestDto:
       title: Invoice Request DTO
       type: object
       required:
-        - price_currency
-        - price_amount
-        - callback_url
+        - priceCurrency
+        - priceAmount
+        - callbackUrl
       properties:
-        price_currency:
+        priceCurrency:
           type: string
           enum:
             - usd
             - chf
-        price_amount:
+        priceAmount:
           type: number
           format: double
-        callback_url:
+        callbackUrl:
           type: string

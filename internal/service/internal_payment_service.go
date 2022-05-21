@@ -6,8 +6,13 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/CHainGate/backend/internal/config"
+	"errors"
+	"fmt"
 	"io"
+	"log"
+
+	"github.com/CHainGate/backend/internal/config"
+	"gorm.io/gorm"
 
 	"github.com/CHainGate/backend/internal/utils"
 
@@ -25,10 +30,11 @@ type IInternalPaymentService interface {
 
 type internalPaymentService struct {
 	paymentRepository repository.IPaymentRepository
+	apiKeyRepository  repository.IApiKeyRepository
 }
 
-func NewInternalPaymentService(paymentRepository repository.IPaymentRepository) IInternalPaymentService {
-	return &internalPaymentService{paymentRepository}
+func NewInternalPaymentService(paymentRepository repository.IPaymentRepository, apiKeyRepository repository.IApiKeyRepository) IInternalPaymentService {
+	return &internalPaymentService{paymentRepository, apiKeyRepository}
 }
 
 func (s *internalPaymentService) AddNewPaymentState(payment *model.Payment, paymentState model.PaymentState) error {
@@ -44,7 +50,7 @@ func (s *internalPaymentService) AddNewPaymentState(payment *model.Payment, paym
 		return err
 	}
 
-	err = callWebhook(payment)
+	err = s.callWebhook(payment)
 	if err != nil {
 		return err
 	}
@@ -59,7 +65,20 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 	}
 	currentPayment, err := s.paymentRepository.FindByBlockchainIdAndCurrency(payment.PaymentId, payCurrency)
 	if err != nil {
+		// if the blockchain service creates a new payment but the backend cannot save it to the database
+		// we will get an expired update after 15min which is fine and can be ignored, because the buyer
+		// never sees the pay address
+		if errors.Is(err, gorm.ErrRecordNotFound) && payment.PaymentState == enum.Expired.String() {
+			return nil
+		}
 		return err
+	}
+
+	for _, state := range currentPayment.PaymentStates {
+		if state.PaymentState.String() == payment.PaymentState {
+			log.Println(fmt.Sprintf("Payment %s with state %s already updated", payment.PaymentId, payment.PaymentState))
+			return nil
+		}
 	}
 
 	paymentState, ok := enum.ParseStringToStateEnum(payment.PaymentState)
@@ -89,7 +108,7 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 		pool.Broadcast <- message
 	}
 
-	err = callWebhook(currentPayment)
+	err = s.callWebhook(currentPayment)
 	if err != nil {
 		return err
 	}
@@ -97,7 +116,7 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 	return nil
 }
 
-func callWebhook(payment *model.Payment) error {
+func (s *internalPaymentService) callWebhook(payment *model.Payment) error {
 	currentState := payment.PaymentStates[0] //states are sorted
 	body := proxyClientApi.WebHookBody{
 		Data: proxyClientApi.WebHookData{
@@ -114,7 +133,14 @@ func callWebhook(payment *model.Payment) error {
 		},
 	}
 
-	signature, err := createSignature(body.Data)
+	apiKey, err := s.apiKeyRepository.FindByMerchantAndMode(payment.MerchantId, payment.Mode)
+	if err != nil {
+		return err
+	}
+
+	decryptedKey, err := Decrypt([]byte(utils.Opts.ApiKeySecret), apiKey.ApiKey)
+
+	signature, err := createSignature(body.Data, decryptedKey)
 	if err != nil {
 		return err
 	}
@@ -131,9 +157,8 @@ func callWebhook(payment *model.Payment) error {
 	return nil
 }
 
-func createSignature(data proxyClientApi.WebHookData) (string, error) {
-	//TODO: use merchant secret api key to sign, first we need to save the api key on our side
-	mac := hmac.New(sha512.New, []byte("supersecret"))
+func createSignature(data proxyClientApi.WebHookData, secret string) (string, error) {
+	mac := hmac.New(sha512.New, []byte(secret))
 	jsonData, err := json.Marshal(data)
 	_, err = io.WriteString(mac, string(jsonData))
 	if err != nil {

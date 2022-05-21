@@ -14,13 +14,14 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/CHainGate/backend/internal/utils"
+
 	"github.com/CHainGate/backend/internal/service"
 
 	"github.com/CHainGate/backend/internal/repository"
 	"github.com/CHainGate/backend/pkg/enum"
 
 	"github.com/CHainGate/backend/configApi"
-	"github.com/CHainGate/backend/internal/model"
 )
 
 // ApiKeyApiService is a service that implements the logic for the ApiKeyApiServicer
@@ -67,24 +68,9 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
 	}
 
-	apiKeyType, ok := enum.ParseStringToApiKeyTypeEnum(apiKeyRequestDto.KeyType)
-	if !ok {
-		return configApi.Response(http.StatusForbidden, nil), errors.New("api key type does not exist")
-	}
-
-	var key *model.ApiKey
-	if apiKeyType == enum.Secret {
-		key, err = s.authenticationService.CreateSecretApiKey(mode, apiKeyType)
-		if err != nil {
-			return configApi.Response(http.StatusInternalServerError, nil), err
-		}
-	}
-
-	if apiKeyType == enum.Public {
-		key, err = s.authenticationService.CreatePublicApiKey(mode, apiKeyType)
-		if err != nil {
-			return configApi.Response(http.StatusInternalServerError, nil), err
-		}
+	key, err := s.authenticationService.CreateApiKey(mode)
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	merchant.ApiKeys = append(merchant.ApiKeys, *key)
@@ -93,18 +79,22 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 		return configApi.Response(http.StatusInternalServerError, nil), errors.New("Merchant could not be updated ")
 	}
 
+	decryptedKey, err := service.Decrypt([]byte(utils.Opts.ApiKeySecret), key.ApiKey)
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), err
+	}
+
 	apiKeyDto := configApi.ApiKeyResponseDto{
 		Id:        key.ID.String(),
-		KeyType:   key.KeyType.String(),
 		CreatedAt: key.CreatedAt,
-		Key:       key.ApiKey,
+		Key:       decryptedKey,
 	}
 
 	return configApi.Response(http.StatusCreated, apiKeyDto), nil
 }
 
 // GetApiKey - gets the api key
-func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType string, authorization string) (configApi.ImplResponse, error) {
+func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, authorization string) (configApi.ImplResponse, error) {
 	merchant, err := s.authenticationService.HandleJwtAuthentication(authorization)
 	if err != nil {
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
@@ -115,12 +105,7 @@ func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType str
 		return configApi.Response(http.StatusBadRequest, nil), errors.New("mode does not exist")
 	}
 
-	enumApiKeyType, ok := enum.ParseStringToApiKeyTypeEnum(keyType)
-	if !ok {
-		return configApi.Response(http.StatusBadRequest, nil), errors.New("api key type does not exist")
-	}
-
-	key, err := s.apiKeyRepository.FindByMerchantAndModeAndKeyType(merchant.ID, enumMode, enumApiKeyType)
+	key, err := s.apiKeyRepository.FindByMerchantAndMode(merchant.ID, enumMode)
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -128,10 +113,14 @@ func (s *ApiKeyApiService) GetApiKey(_ context.Context, mode string, keyType str
 		return configApi.Response(http.StatusNoContent, nil), nil
 	}
 
+	decryptedKey, err := service.Decrypt([]byte(utils.Opts.ApiKeySecret), key.ApiKey)
+	if err != nil {
+		return configApi.Response(http.StatusInternalServerError, nil), err
+	}
+
 	result := configApi.ApiKeyResponseDto{
 		Id:        key.ID.String(),
-		Key:       key.ApiKey,
-		KeyType:   key.KeyType.String(),
+		Key:       decryptedKey,
 		CreatedAt: key.CreatedAt,
 	}
 

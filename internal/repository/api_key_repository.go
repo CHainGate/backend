@@ -13,7 +13,7 @@ type apiKeyRepository struct {
 
 type IApiKeyRepository interface {
 	FindById(id string) (*model.ApiKey, error)
-	FindByMerchantAndModeAndKeyType(merchantId uuid.UUID, mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error)
+	FindByMerchantAndMode(merchantId uuid.UUID, mode enum.Mode) (*model.ApiKey, error)
 	Delete(merchantId uuid.UUID, apiKeyId string) error
 }
 
@@ -30,9 +30,9 @@ func (r *apiKeyRepository) FindById(id string) (*model.ApiKey, error) {
 	return &apiKey, nil
 }
 
-func (r *apiKeyRepository) FindByMerchantAndModeAndKeyType(merchantId uuid.UUID, mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error) {
+func (r *apiKeyRepository) FindByMerchantAndMode(merchantId uuid.UUID, mode enum.Mode) (*model.ApiKey, error) {
 	var key model.ApiKey
-	result := r.DB.Where("merchant_id = ? and mode = ? and key_type = ?", merchantId, mode, apiKeyType).Find(&key)
+	result := r.DB.Where("merchant_id = ? and mode = ?", merchantId, mode).Find(&key)
 	if result.Error != nil {
 		return nil, result.Error
 	}

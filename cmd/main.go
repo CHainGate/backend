@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/CHainGate/backend/internal/config"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/CHainGate/backend/internal/config"
 
 	"github.com/CHainGate/backend/configApi"
 	"github.com/CHainGate/backend/internal/repository"
@@ -24,7 +25,7 @@ func main() {
 	utils.NewOpts() // create utils.Opts (env variables)
 	merchantRepo, apiKeyRepo, paymentRepo, err := repository.SetupDatabase()
 	if err != nil {
-		panic(err)
+		log.Fatalf("Could not setup database, got error: %s", err.Error())
 	}
 
 	authService := service.NewAuthenticationService(merchantRepo, apiKeyRepo)
@@ -47,7 +48,7 @@ func main() {
 	configRouter := configApi.NewRouter(ApiKeyApiController, AuthenticationApiController, LoggingApiController, WalletApiController, ConfigApiController)
 
 	// internal api
-	internalPaymentService := service.NewInternalPaymentService(paymentRepo)
+	internalPaymentService := service.NewInternalPaymentService(paymentRepo, apiKeyRepo)
 	PaymentUpdateApiService := internalService.NewPaymentUpdateApiService(internalPaymentService)
 	PaymentUpdateApiController := internalApi.NewPaymentUpdateApiController(PaymentUpdateApiService)
 

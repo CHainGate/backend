@@ -2,9 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/CHainGate/backend/internal/utils"
 
+	"github.com/CHainGate/backend/btcClientApi"
 	"github.com/CHainGate/backend/ethClientApi"
 	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/repository"
@@ -13,7 +16,7 @@ import (
 )
 
 type IPublicPaymentService interface {
-	HandleNewPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode, callback string, merchant *model.Merchant) (*model.Payment, error)
+	HandleNewPayment(priceCurrency enum.FiatCurrency, priceAmount float64, payCurrency enum.CryptoCurrency, wallet string, mode enum.Mode, callback string, merchant *model.Merchant) (*model.Payment, error)
 	HandleNewInvoice(payment *model.Payment, currency enum.CryptoCurrency) (*model.Payment, error)
 }
 
@@ -23,21 +26,65 @@ type publicPaymentService struct {
 	internalPaymentService IInternalPaymentService
 }
 
+type PaymentResponse struct {
+	PaymentId     string
+	PaymentState  *string
+	PayCurrency   string
+	PayAmount     string
+	PriceCurrency string
+	PriceAmount   float64
+	PayAddress    string
+}
+
 func NewPublicPaymentService(merchantRepository repository.IMerchantRepository, paymentRepository repository.IPaymentRepository, internalPaymentService IInternalPaymentService) IPublicPaymentService {
 	return &publicPaymentService{merchantRepository, paymentRepository, internalPaymentService}
 }
 
-func (s *publicPaymentService) HandleNewPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode, callback string, merchant *model.Merchant) (*model.Payment, error) {
-	paymentResponse, err := createEthPayment(priceCurrency, priceAmount, wallet, mode)
-	if err != nil {
-		return nil, err
+func (s *publicPaymentService) HandleNewPayment(priceCurrency enum.FiatCurrency, priceAmount float64, payCurrency enum.CryptoCurrency, wallet string, mode enum.Mode, callback string, merchant *model.Merchant) (*model.Payment, error) {
+	if payCurrency == enum.ETH {
+		paymentResponse, err := createEthPayment(priceCurrency, priceAmount, wallet, mode)
+		if err != nil {
+			return nil, err
+		}
+
+		p := &PaymentResponse{
+			PaymentId:     paymentResponse.PaymentId,
+			PaymentState:  paymentResponse.PaymentState,
+			PayCurrency:   paymentResponse.PayCurrency,
+			PayAmount:     paymentResponse.PayAmount,
+			PriceCurrency: paymentResponse.PriceCurrency,
+			PriceAmount:   paymentResponse.PriceAmount,
+			PayAddress:    paymentResponse.PayAddress,
+		}
+		payment, err := s.handleBlockchainResponse(p, mode, callback, merchant)
+		if err != nil {
+			return nil, err
+		}
+		return payment, nil
 	}
 
-	payment, err := s.handleEthClientResponse(paymentResponse, mode, callback, merchant)
-	if err != nil {
-		return nil, err
+	if payCurrency == enum.BTC {
+		paymentResponse, err := createBtcPayment(priceCurrency, priceAmount, wallet, mode)
+		if err != nil {
+			return nil, err
+		}
+
+		p := &PaymentResponse{
+			PaymentId:     paymentResponse.PaymentId,
+			PaymentState:  &paymentResponse.PaymentState,
+			PayCurrency:   paymentResponse.PayCurrency,
+			PayAmount:     paymentResponse.PayAmount,
+			PriceCurrency: paymentResponse.PriceCurrency,
+			PriceAmount:   paymentResponse.PriceAmount,
+			PayAddress:    paymentResponse.PayAddress,
+		}
+		payment, err := s.handleBlockchainResponse(p, mode, callback, merchant)
+		if err != nil {
+			return nil, err
+		}
+		return payment, nil
 	}
-	return payment, nil
+	return nil, errors.New(fmt.Sprintf("currency %s not implemented", payCurrency.String()))
 }
 
 func (s *publicPaymentService) HandleNewInvoice(initialPayment *model.Payment, currency enum.CryptoCurrency) (*model.Payment, error) {
@@ -64,17 +111,11 @@ func (s *publicPaymentService) HandleNewInvoice(initialPayment *model.Payment, c
 	return payment, nil
 }
 
-func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.PaymentResponse, mode enum.Mode, callbackUrl string, merchant *model.Merchant) (*model.Payment, error) {
+func (s *publicPaymentService) handleBlockchainResponse(resp *PaymentResponse, mode enum.Mode, callbackUrl string, merchant *model.Merchant) (*model.Payment, error) {
 	blockChainPaymentId, err := uuid.Parse(resp.PaymentId)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: get wallet from db
-	/*	wallet := models.Wallet{
-		Mode: mode.String(),
-		Currency: "eth",
-		Address: "asdwar88asd",
-	}*/
 
 	paymentState, ok := enum.ParseStringToStateEnum(*resp.PaymentState)
 	if !ok {
@@ -102,7 +143,7 @@ func (s *publicPaymentService) handleEthClientResponse(resp *ethClientApi.Paymen
 		BlockchainPaymentId: blockChainPaymentId,
 		PaymentStates:       []model.PaymentState{initialState},
 		CallbackUrl:         callbackUrl,
-		PayAddress:          resp.PayAddress, //TODO: currently not set from eth service
+		PayAddress:          resp.PayAddress,
 		Wallet:              &merchant.Wallets[0],
 	}
 	payment.ID = uuid.New()
@@ -160,6 +201,18 @@ func createEthPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wall
 	configuration.Servers[0].URL = utils.Opts.EthereumBaseUrl
 	apiClient := ethClientApi.NewAPIClient(configuration)
 	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequest(paymentRequest).Execute()
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func createBtcPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wallet string, mode enum.Mode) (*btcClientApi.PaymentResponseDto, error) {
+	paymentRequest := *btcClientApi.NewPaymentRequestDto(priceCurrency.String(), priceAmount, wallet, mode.String())
+	configuration := btcClientApi.NewConfiguration()
+	configuration.Servers[0].URL = utils.Opts.BitcoinBaseUrl
+	apiClient := btcClientApi.NewAPIClient(configuration)
+	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequestDto(paymentRequest).Execute()
 	if err != nil {
 		return nil, err
 	}
