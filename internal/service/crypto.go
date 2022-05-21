@@ -42,7 +42,7 @@ func encrypt(key []byte, message string) (string, error) {
 }
 
 // Decrypt https://gist.github.com/mickelsonm/e1bf365a149f3fe59119
-func decrypt(key []byte, secureMessage string) (string, error) {
+func Decrypt(key []byte, secureMessage string) (string, error) {
 	cipherText, err := base64.StdEncoding.DecodeString(secureMessage)
 	if err != nil {
 		return "", err
@@ -89,7 +89,7 @@ func createSalt() ([]byte, error) {
 	return salt, nil
 }
 
-func generateApiKey() (string, error) {
+func generateApiKeySecret() (string, error) {
 	randomBytes := make([]byte, ApiKeyBytes)
 	_, err := rand.Read(randomBytes)
 	if err != nil {

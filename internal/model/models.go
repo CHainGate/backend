@@ -3,12 +3,13 @@ package model
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"golang.org/x/exp/slices"
 	"log"
 	"math/big"
 	"reflect"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"golang.org/x/exp/slices"
 
 	"github.com/CHainGate/backend/pkg/enum"
 	"gorm.io/gorm"
@@ -53,12 +54,11 @@ type Wallet struct {
 
 type ApiKey struct {
 	Base
-	MerchantId uuid.UUID       `gorm:"index:api_key_index,unique;type:uuid"`
-	Mode       enum.Mode       `gorm:"index:api_key_index,unique"`
-	KeyType    enum.ApiKeyType `gorm:"index:api_key_index,unique,where:deleted_at IS NULL""`
+	MerchantId uuid.UUID `gorm:"index:api_key_index,unique;type:uuid"`
+	Mode       enum.Mode `gorm:"index:api_key_index,unique"`
 	ApiKey     string
-	SecretKey  string
-	Salt       []byte
+	Secret     string
+	SecretSalt []byte
 }
 
 type Payment struct {

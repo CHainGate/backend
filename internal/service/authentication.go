@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/url"
 	"strconv"
@@ -27,8 +28,7 @@ type IAuthenticationService interface {
 	HandleJwtAuthentication(bearer string) (*model.Merchant, error)
 	HandleLogin(email string, password string) (string, error)
 	HandleApiAuthentication(apiKey string) (*model.Merchant, *model.ApiKey, error)
-	CreateSecretApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error)
-	CreatePublicApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error)
+	CreateApiKey(mode enum.Mode) (*model.ApiKey, error)
 	CreateMerchant(registerRequestDto configApi.RegisterRequestDto) error
 	HandleVerification(email string, verificationCode int64) error
 }
@@ -83,35 +83,33 @@ func (s *authenticationService) HandleLogin(email string, password string) (stri
 }
 
 func (s *authenticationService) HandleApiAuthentication(apiKey string) (*model.Merchant, *model.ApiKey, error) {
-	decryptedApiKey, err := decrypt([]byte(utils.Opts.ApiKeySecret), apiKey)
+	fmt.Println("encryptedApiKey: ", apiKey)
+	decryptedApiKey, err := Decrypt([]byte(utils.Opts.ApiKeySecret), apiKey)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	fmt.Println("decryptedApiKey: ", decryptedApiKey)
 	apiKeyDetails := strings.Split(decryptedApiKey, "_")
 	apiKeyId := apiKeyDetails[0]
 	apiKeySecret := apiKeyDetails[1]
+
+	fmt.Println("apiKeyId: ", apiKeyId)
+	fmt.Println("apiKeySecret: ", apiKeySecret)
 
 	currentApiKey, err := s.apiKeyRepository.FindById(apiKeyId)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if currentApiKey.KeyType == enum.Secret {
-		encryptedKey, err := scryptPassword(apiKeySecret, currentApiKey.Salt)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if encryptedKey != currentApiKey.SecretKey {
-			return nil, nil, errors.New("not authorized")
-		}
+	encryptedKeySecret, err := scryptPassword(apiKeySecret, currentApiKey.SecretSalt)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if currentApiKey.KeyType == enum.Public {
-		if apiKeySecret != currentApiKey.SecretKey {
-			return nil, nil, errors.New("not authorized")
-		}
+	fmt.Println("scryptApiSecret: ", encryptedKeySecret)
+	if encryptedKeySecret != currentApiKey.Secret {
+		return nil, nil, errors.New("not authorized")
 	}
 
 	merchant, err := s.merchantRepository.FindById(currentApiKey.MerchantId)
@@ -122,58 +120,46 @@ func (s *authenticationService) HandleApiAuthentication(apiKey string) (*model.M
 	return merchant, currentApiKey, nil
 }
 
-func (s *authenticationService) CreateSecretApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error) {
-	apiSecretKey, err := generateApiKey()
+func (s *authenticationService) CreateApiKey(mode enum.Mode) (*model.ApiKey, error) {
+	apiKeySecret, err := generateApiKeySecret()
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Println("apiKeySecret: ", apiKeySecret)
 	key := model.ApiKey{
-		Mode:    mode,
-		KeyType: apiKeyType,
+		Base: model.Base{ID: uuid.New()},
+		Mode: mode,
 	}
-	key.ID = uuid.New()
 
-	salt, err := createSalt()
+	secretSalt, err := createSalt()
 	if err != nil {
 		return nil, err
 	}
 
-	apiSecureKeyEncrypted, err := scryptPassword(apiSecretKey, salt)
+	apiKeySecretEncrypted, err := scryptPassword(apiKeySecret, secretSalt)
 	if err != nil {
 		return nil, err
 	}
 
-	key.SecretKey = apiSecureKeyEncrypted
-	key.Salt = salt
+	fmt.Println("apiKeySecretEncrypted: ", apiKeySecretEncrypted)
+	key.Secret = apiKeySecretEncrypted
+	key.SecretSalt = secretSalt
 
-	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
+	combinedApiKey, err := getCombinedApiKey(key, apiKeySecret)
+	fmt.Println("combinedApiKey: ", combinedApiKey)
 	if err != nil {
 		return nil, err
 	}
 
-	key.ApiKey = combinedApiKey
-
-	return &key, nil
-}
-
-func (s *authenticationService) CreatePublicApiKey(mode enum.Mode, apiKeyType enum.ApiKeyType) (*model.ApiKey, error) {
-	apiSecretKey, err := generateApiKey()
-	if err != nil {
-		return nil, err
-	}
-	key := model.ApiKey{
-		Mode:    mode,
-		KeyType: apiKeyType,
-	}
-
-	combinedApiKey, err := getCombinedApiKey(key, apiSecretKey)
+	fmt.Println("combinedApiKey: ", combinedApiKey)
+	encryptedCombinedApiKey, err := encrypt([]byte(utils.Opts.ApiKeySecret), combinedApiKey)
 	if err != nil {
 		return nil, err
 	}
 
-	key.ApiKey = combinedApiKey
-	key.SecretKey = apiSecretKey
+	fmt.Println("encryptedCombinedApiKey: ", encryptedCombinedApiKey)
+	key.ApiKey = encryptedCombinedApiKey
 
 	return &key, nil
 }

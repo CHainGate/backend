@@ -188,14 +188,6 @@ paths:
             enum:
               - test
               - main
-        - in: query
-          name: key_type
-          required: true
-          schema:
-            type: string
-            enum:
-              - secret
-              - public
         - in: header
           name: authorization
           schema:
@@ -428,11 +420,6 @@ components:
           format: uuid
         key:
           type: string
-        key_type:
-          type: string
-          enum:
-            - secret
-            - public
         created_at:
           type: string
           format: date-time
@@ -448,11 +435,6 @@ components:
           enum:
             - test
             - main
-        key_type:
-          type: string
-          enum:
-            - secret
-            - public
     LoggingResponseDto:
       title: Logging Informations Response DTO
       type: object

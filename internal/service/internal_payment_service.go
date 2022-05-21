@@ -6,12 +6,13 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/CHainGate/backend/internal/config"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"io"
 	"log"
+
+	"github.com/CHainGate/backend/internal/config"
+	"gorm.io/gorm"
 
 	"github.com/CHainGate/backend/internal/utils"
 

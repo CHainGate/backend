@@ -1,11 +1,12 @@
 package service
 
 import (
-	"gopkg.in/h2non/gock.v1"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"gopkg.in/h2non/gock.v1"
 
 	"github.com/CHainGate/backend/internal/model"
 	"github.com/CHainGate/backend/internal/repository"
