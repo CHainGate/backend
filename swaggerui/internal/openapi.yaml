@@ -35,31 +35,33 @@ components:
       title: Payment Update DTO
       type: object
       required:
-        - payment_id
-        - pay_amount
-        - pay_currency
-        - actually_paid
-        - payment_state
+        - paymentId
+        - payAmount
+        - payCurrency
+        - actuallyPaid
+        - paymentState
       properties:
-        payment_id:
+        paymentId:
           type: string
           format: uuid
-        pay_amount:
+        payAmount:
           type: string
-        pay_currency:
+        payCurrency:
           type: string
           enum:
             - eth
             - btc
-        actually_paid:
+        actuallyPaid:
           type: string
-        payment_state:
+        paymentState:
           type: string
           enum:
+            - currency_selection
             - waiting
             - partially_paid
             - paid
-            - sending
+            - confirmed
+            - forwarded
             - finished
             - expired
             - failed
