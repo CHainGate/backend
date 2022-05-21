@@ -48,7 +48,7 @@ func main() {
 	configRouter := configApi.NewRouter(ApiKeyApiController, AuthenticationApiController, LoggingApiController, WalletApiController, ConfigApiController)
 
 	// internal api
-	internalPaymentService := service.NewInternalPaymentService(paymentRepo)
+	internalPaymentService := service.NewInternalPaymentService(paymentRepo, apiKeyRepo)
 	PaymentUpdateApiService := internalService.NewPaymentUpdateApiService(internalPaymentService)
 	PaymentUpdateApiController := internalApi.NewPaymentUpdateApiController(PaymentUpdateApiService)
 
