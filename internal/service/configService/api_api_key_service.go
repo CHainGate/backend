@@ -12,7 +12,6 @@ package configService
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/utils"
@@ -84,7 +83,7 @@ func (s *ApiKeyApiService) GenerateApiKey(_ context.Context, authorization strin
 	if err != nil {
 		return configApi.Response(http.StatusInternalServerError, nil), err
 	}
-	fmt.Println("decryptedKey: ", decryptedKey)
+
 	apiKeyDto := configApi.ApiKeyResponseDto{
 		Id:        key.ID.String(),
 		CreatedAt: key.CreatedAt,

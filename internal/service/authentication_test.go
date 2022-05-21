@@ -48,7 +48,7 @@ func setup() {
 	utils.Opts.ApiKeySecret = "apiSecretKey1234"
 	merchantId, err := uuid.Parse("b39310ec-59f9-454e-b1dd-2bcc18e9994f")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	testMerchant.ID = merchantId
 	testMerchant.EmailVerification.MerchantId = merchantId
@@ -276,24 +276,11 @@ func TestSendVerificationEmail(t *testing.T) {
 
 // TODO: improve test
 func TestHandleSecretApiKey(t *testing.T) {
-	key, err := service.CreateSecretApiKey(enum.Test, enum.Secret)
+	key, err := service.CreateApiKey(enum.Test)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if key.Mode != enum.Test ||
-		key.KeyType != enum.Secret {
-		t.Errorf("")
-	}
-}
-
-// TODO: improve test
-func TestHandlePublicApiKey(t *testing.T) {
-	key, err := service.CreatePublicApiKey(enum.Test, enum.Public)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if key.Mode != enum.Test ||
-		key.KeyType != enum.Public {
+	if key.Mode != enum.Test {
 		t.Errorf("")
 	}
 }
@@ -306,7 +293,7 @@ func TestGetCombinedApiKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getCombinedApiKey error: %s", err.Error())
 	}
-	decrypt, err := decrypt([]byte(utils.Opts.ApiKeySecret), combinedApiKey)
+	decrypt, err := Decrypt([]byte(utils.Opts.ApiKeySecret), combinedApiKey)
 	if err != nil {
 		t.Fatalf("Decrypt error: %s", err.Error())
 	}
@@ -314,14 +301,5 @@ func TestGetCombinedApiKey(t *testing.T) {
 	expected := key.ID.String() + "_" + secretKey
 	if expected != decrypt {
 		t.Errorf("expected combined key %s, but got %s", expected, decrypt)
-	}
-}
-
-func TestGetApiKeyHint(t *testing.T) {
-	key := "lkja4j5lkjalfj235w4lbvsst"
-	expected := "lkja...vsst"
-	hint := getApiKeyHint(key)
-	if hint != expected {
-		t.Errorf("expected hint %s, but got %s", expected, hint)
 	}
 }

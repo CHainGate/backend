@@ -143,7 +143,7 @@ func (s *publicPaymentService) handleBlockchainResponse(resp *PaymentResponse, m
 		BlockchainPaymentId: blockChainPaymentId,
 		PaymentStates:       []model.PaymentState{initialState},
 		CallbackUrl:         callbackUrl,
-		PayAddress:          resp.PayAddress, //TODO: currently not set from eth service
+		PayAddress:          resp.PayAddress,
 		Wallet:              &merchant.Wallets[0],
 	}
 	payment.ID = uuid.New()

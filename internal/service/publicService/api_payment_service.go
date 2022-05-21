@@ -11,6 +11,7 @@ package publicService
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/service"
@@ -46,9 +47,13 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 
 	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(paymentRequestDto.PriceCurrency)
 	if !ok {
+		return publicApi.Response(http.StatusBadRequest, nil), errors.New("bad price currency")
 	}
 
 	payCurrency, ok := enum.ParseStringToCryptoCurrencyEnum(paymentRequestDto.PayCurrency)
+	if !ok {
+		return publicApi.Response(http.StatusBadRequest, nil), errors.New("bad pay currency")
+	}
 
 	var wallet string
 	for _, w := range merchant.Wallets {

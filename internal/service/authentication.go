@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"math/big"
 	"net/url"
 	"strconv"
@@ -83,19 +82,14 @@ func (s *authenticationService) HandleLogin(email string, password string) (stri
 }
 
 func (s *authenticationService) HandleApiAuthentication(apiKey string) (*model.Merchant, *model.ApiKey, error) {
-	fmt.Println("encryptedApiKey: ", apiKey)
 	decryptedApiKey, err := Decrypt([]byte(utils.Opts.ApiKeySecret), apiKey)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	fmt.Println("decryptedApiKey: ", decryptedApiKey)
 	apiKeyDetails := strings.Split(decryptedApiKey, "_")
 	apiKeyId := apiKeyDetails[0]
 	apiKeySecret := apiKeyDetails[1]
-
-	fmt.Println("apiKeyId: ", apiKeyId)
-	fmt.Println("apiKeySecret: ", apiKeySecret)
 
 	currentApiKey, err := s.apiKeyRepository.FindById(apiKeyId)
 	if err != nil {
@@ -107,7 +101,6 @@ func (s *authenticationService) HandleApiAuthentication(apiKey string) (*model.M
 		return nil, nil, err
 	}
 
-	fmt.Println("scryptApiSecret: ", encryptedKeySecret)
 	if encryptedKeySecret != currentApiKey.Secret {
 		return nil, nil, errors.New("not authorized")
 	}
@@ -126,7 +119,6 @@ func (s *authenticationService) CreateApiKey(mode enum.Mode) (*model.ApiKey, err
 		return nil, err
 	}
 
-	fmt.Println("apiKeySecret: ", apiKeySecret)
 	key := model.ApiKey{
 		Base: model.Base{ID: uuid.New()},
 		Mode: mode,
@@ -142,23 +134,19 @@ func (s *authenticationService) CreateApiKey(mode enum.Mode) (*model.ApiKey, err
 		return nil, err
 	}
 
-	fmt.Println("apiKeySecretEncrypted: ", apiKeySecretEncrypted)
 	key.Secret = apiKeySecretEncrypted
 	key.SecretSalt = secretSalt
 
 	combinedApiKey, err := getCombinedApiKey(key, apiKeySecret)
-	fmt.Println("combinedApiKey: ", combinedApiKey)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("combinedApiKey: ", combinedApiKey)
 	encryptedCombinedApiKey, err := encrypt([]byte(utils.Opts.ApiKeySecret), combinedApiKey)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("encryptedCombinedApiKey: ", encryptedCombinedApiKey)
 	key.ApiKey = encryptedCombinedApiKey
 
 	return &key, nil
@@ -247,7 +235,8 @@ func sendVerificationEmail(merchant *model.Merchant) error {
 
 	content := "Please Verify your E-Mail: " + baseUrl.String()
 	email := *proxyClientApi.NewEmailRequestDto(merchant.FirstName, merchant.Email, "Verify your E-Mail", content)
-	configuration := NewConfiguration()
+	configuration := proxyClientApi.NewConfiguration()
+	configuration.Servers[0].URL = utils.Opts.ProxyBaseUrl
 	apiClient := proxyClientApi.NewAPIClient(configuration)
 	_, err = apiClient.EmailApi.SendEmail(context.Background()).EmailRequestDto(email).Execute()
 	if err != nil {
@@ -298,26 +287,4 @@ func decodeJwtToken(jwtToken string) (*jwt.RegisteredClaims, error) {
 func getCombinedApiKey(key model.ApiKey, apiSecretKey string) (string, error) {
 	combinedKey := key.ID.String() + "_" + apiSecretKey
 	return encrypt([]byte(utils.Opts.ApiKeySecret), combinedKey)
-}
-
-func getApiKeyHint(key string) string {
-	apiKeyBeginning := key[0:4]
-	apiKeyEnding := key[len(key)-4:]
-	return apiKeyBeginning + "..." + apiKeyEnding // show the first and last 4 letters of the secret api key
-}
-
-func NewConfiguration() *proxyClientApi.Configuration {
-	cfg := &proxyClientApi.Configuration{
-		DefaultHeader: make(map[string]string),
-		UserAgent:     "OpenAPI-Generator/1.0.0/go",
-		Debug:         true,
-		Servers: proxyClientApi.ServerConfigurations{
-			{
-				URL:         utils.Opts.ProxyBaseUrl,
-				Description: "No description provided",
-			},
-		},
-		OperationServers: map[string]proxyClientApi.ServerConfigurations{},
-	}
-	return cfg
 }
