@@ -115,7 +115,7 @@ components:
           enum:
             - eth
             - btc
-        actuallypaid:
+        actuallyPaid:
           type: string
         callbackUrl:
           type: string
