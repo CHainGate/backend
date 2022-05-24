@@ -39,7 +39,6 @@ func ServeWs(pool *model.Pool, w http.ResponseWriter, r *http.Request, publicPay
 		currency := client.Read()
 		payCurrency, _ := enum.ParseStringToCryptoCurrencyEnum(currency)
 		publicPaymentService.HandleNewInvoice(payment, payCurrency)
-		client.SendWaiting(payment)
 	case enum.Waiting:
 		client.SendWaiting(payment)
 	case enum.Paid:
