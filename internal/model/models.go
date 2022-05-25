@@ -118,7 +118,7 @@ func (c *Client) SendInitialCoins() {
 	c.Conn.WriteJSON(message)
 }
 
-func getWaitingCreateDate(payment *Payment) time.Time {
+func GetWaitingCreateDate(payment *Payment) time.Time {
 	index := slices.IndexFunc(payment.PaymentStates, func(ps PaymentState) bool { return ps.PaymentState == enum.Waiting })
 	return payment.PaymentStates[index].CreatedAt
 }
@@ -128,7 +128,7 @@ func (c *Client) SendWaiting(p *Payment) {
 		Currency:   p.PayCurrency.String(),
 		PayAddress: p.PayAddress,
 		PayAmount:  p.PaymentStates[0].PayAmount.String(),
-		ExpireTime: getWaitingCreateDate(p).Add(15 * time.Minute),
+		ExpireTime: GetWaitingCreateDate(p).Add(15 * time.Minute),
 	}
 	message := Message{MessageType: enum.Waiting.String(), Body: body}
 	c.Pool.Broadcast <- message
