@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
+	"github.com/CHainGate/backend/internal/config"
 
 	"github.com/CHainGate/backend/internal/utils"
 
@@ -190,6 +193,17 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 	err = s.internalPaymentService.AddNewPaymentState(payment, initialState)
 	if err != nil {
 		return nil, err
+	}
+
+	body := model.SocketBody{
+		Currency:   payment.PayCurrency.String(),
+		PayAddress: payment.PayAddress,
+		PayAmount:  resp.PayAmount,
+		ExpireTime: model.GetWaitingCreateDate(payment).Add(15 * time.Minute),
+	}
+	message := model.Message{MessageType: paymentState.String(), Body: body}
+	if pool, ok := config.Pools[payment.ID]; ok {
+		pool.Broadcast <- message
 	}
 
 	return payment, nil
