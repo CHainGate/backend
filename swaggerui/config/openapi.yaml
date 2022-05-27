@@ -454,6 +454,8 @@ components:
         updatedAt:
           type: string
           format: date-time
+        transaction:
+          type: string
         history:
           type: array
           items:
