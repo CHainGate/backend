@@ -77,6 +77,7 @@ func (s *LoggingApiService) GetLoggingInformation(_ context.Context, mode string
 			CreatedAt:   payment.CreatedAt,
 			PaymentId:   payment.ID.String(),
 			CallbackUrl: payment.CallbackUrl,
+			Mode:        payment.Mode.String(),
 			Transaction: payment.TxHash,
 			History:     history,
 		}

@@ -441,6 +441,7 @@ components:
         - callbackUrl
         - createdAt
         - updatedAt
+        - mode
         - history
       properties:
         paymentId:
@@ -454,6 +455,11 @@ components:
         updatedAt:
           type: string
           format: date-time
+        mode:
+          type: string
+          enum:
+            - main
+            - test
         transaction:
           type: string
         history:
