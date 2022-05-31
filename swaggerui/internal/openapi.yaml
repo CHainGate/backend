@@ -65,3 +65,5 @@ components:
             - finished
             - expired
             - failed
+        txHash:
+          type: string

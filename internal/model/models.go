@@ -73,7 +73,7 @@ type Payment struct {
 	PayCurrency         enum.CryptoCurrency
 	PayAddress          string
 	CallbackUrl         string
-	TransactionHash     string
+	TxHash              string
 	PaymentStates       []PaymentState
 }
 

@@ -93,6 +93,8 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 
 	currentPayment.PaymentStates = append(currentPayment.PaymentStates, newPaymentState)
 
+	currentPayment.TxHash = payment.TxHash
+
 	err = s.paymentRepository.Update(currentPayment)
 	if err != nil {
 		return err
