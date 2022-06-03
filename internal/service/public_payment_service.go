@@ -200,6 +200,7 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 		PayAddress: payment.PayAddress,
 		PayAmount:  resp.PayAmount,
 		ExpireTime: model.GetWaitingCreateDate(payment).Add(15 * time.Minute),
+		Mode:       payment.Mode.String(),
 	}
 	message := model.Message{MessageType: paymentState.String(), Body: body}
 	if pool, ok := config.Pools[payment.ID]; ok {

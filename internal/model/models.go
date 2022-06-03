@@ -108,10 +108,11 @@ type Client struct {
 }
 
 type SocketBody struct {
-	Currency   string
-	PayAddress string
-	PayAmount  string
-	ExpireTime time.Time
+	Currency   string    `json:"currency"`
+	PayAddress string    `json:"payAddress"`
+	PayAmount  string    `json:"payAmount"`
+	ExpireTime time.Time `json:"expireTime"`
+	Mode       string    `json:"mode"`
 }
 
 func (c *Client) SendInitialCoins() {
@@ -130,6 +131,7 @@ func (c *Client) SendWaiting(p *Payment) {
 		PayAddress: p.PayAddress,
 		PayAmount:  p.PaymentStates[0].PayAmount.String(),
 		ExpireTime: GetWaitingCreateDate(p).Add(15 * time.Minute),
+		Mode:       p.Mode.String(),
 	}
 	message := Message{MessageType: enum.Waiting.String(), Body: body}
 	c.Pool.Broadcast <- message
