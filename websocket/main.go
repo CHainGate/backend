@@ -51,6 +51,8 @@ func ServeWs(pool *model.Pool, w http.ResponseWriter, r *http.Request, publicPay
 		client.SendConfirmed()
 	case enum.Expired:
 		client.SendExpired()
+	case enum.Failed:
+		client.SendFailed()
 	}
 	client.Read()
 }

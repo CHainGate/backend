@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/CHainGate/backend/internal/config"
 	"gorm.io/gorm"
@@ -105,7 +106,17 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 		return err
 	}
 
-	message := model.Message{MessageType: paymentState.String(), Body: enum.GetCryptoCurrencyDetails()}
+	body := model.SocketBody{
+		Currency:       currentPayment.PayCurrency.String(),
+		PayAddress:     currentPayment.PayAddress,
+		PayAmount:      currentPayment.PaymentStates[0].PayAmount.String(),
+		ExpireTime:     model.GetWaitingCreateDate(currentPayment).Add(15 * time.Minute),
+		Mode:           currentPayment.Mode.String(),
+		SuccessPageURL: currentPayment.SuccessPageUrl,
+		FailurePageURL: currentPayment.FailurePageUrl,
+	}
+
+	message := model.Message{MessageType: paymentState.String(), Body: body}
 	if pool, ok := config.Pools[currentPayment.ID]; ok {
 		pool.Broadcast <- message
 	}

@@ -196,11 +196,13 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 	}
 
 	body := model.SocketBody{
-		Currency:   payment.PayCurrency.String(),
-		PayAddress: payment.PayAddress,
-		PayAmount:  resp.PayAmount,
-		ExpireTime: model.GetWaitingCreateDate(payment).Add(15 * time.Minute),
-		Mode:       payment.Mode.String(),
+		Currency:       payment.PayCurrency.String(),
+		PayAddress:     payment.PayAddress,
+		PayAmount:      resp.PayAmount,
+		ExpireTime:     model.GetWaitingCreateDate(payment).Add(15 * time.Minute),
+		Mode:           payment.Mode.String(),
+		SuccessPageURL: payment.SuccessPageUrl,
+		FailurePageURL: payment.FailurePageUrl,
 	}
 	message := model.Message{MessageType: paymentState.String(), Body: body}
 	if pool, ok := config.Pools[payment.ID]; ok {

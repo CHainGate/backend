@@ -73,6 +73,8 @@ type Payment struct {
 	PayCurrency         enum.CryptoCurrency
 	PayAddress          string
 	CallbackUrl         string
+	SuccessPageUrl      string
+	FailurePageUrl      string
 	TxHash              string
 	PaymentStates       []PaymentState
 }
@@ -108,11 +110,13 @@ type Client struct {
 }
 
 type SocketBody struct {
-	Currency   string    `json:"currency"`
-	PayAddress string    `json:"payAddress"`
-	PayAmount  string    `json:"payAmount"`
-	ExpireTime time.Time `json:"expireTime"`
-	Mode       string    `json:"mode"`
+	Currency       string    `json:"currency"`
+	PayAddress     string    `json:"payAddress"`
+	PayAmount      string    `json:"payAmount"`
+	ExpireTime     time.Time `json:"expireTime"`
+	Mode           string    `json:"mode"`
+	SuccessPageURL string    `json:"successPageURL"`
+	FailurePageURL string    `json:"failurePageURL"`
 }
 
 func (c *Client) SendInitialCoins() {
@@ -127,11 +131,13 @@ func GetWaitingCreateDate(payment *Payment) time.Time {
 
 func (c *Client) SendWaiting(p *Payment) {
 	body := SocketBody{
-		Currency:   p.PayCurrency.String(),
-		PayAddress: p.PayAddress,
-		PayAmount:  p.PaymentStates[0].PayAmount.String(),
-		ExpireTime: GetWaitingCreateDate(p).Add(15 * time.Minute),
-		Mode:       p.Mode.String(),
+		Currency:       p.PayCurrency.String(),
+		PayAddress:     p.PayAddress,
+		PayAmount:      p.PaymentStates[0].PayAmount.String(),
+		ExpireTime:     GetWaitingCreateDate(p).Add(15 * time.Minute),
+		Mode:           p.Mode.String(),
+		SuccessPageURL: p.SuccessPageUrl,
+		FailurePageURL: p.FailurePageUrl,
 	}
 	message := Message{MessageType: enum.Waiting.String(), Body: body}
 	c.Pool.Broadcast <- message
@@ -149,6 +155,11 @@ func (c *Client) SendConfirmed() {
 
 func (c *Client) SendExpired() {
 	message := Message{MessageType: enum.Expired.String(), Body: enum.GetCryptoCurrencyDetails()}
+	c.Pool.Broadcast <- message
+}
+
+func (c *Client) SendFailed() {
+	message := Message{MessageType: enum.Failed.String(), Body: enum.GetCryptoCurrencyDetails()}
 	c.Pool.Broadcast <- message
 }
 
