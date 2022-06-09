@@ -107,6 +107,7 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 	}
 
 	body := model.SocketBody{
+		InitialState:   false,
 		Currency:       currentPayment.PayCurrency.String(),
 		PayAddress:     currentPayment.PayAddress,
 		PayAmount:      currentPayment.PaymentStates[0].PayAmount.String(),

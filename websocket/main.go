@@ -3,6 +3,7 @@ package websocket
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/CHainGate/backend/internal/model"
 
@@ -32,6 +33,19 @@ func ServeWs(pool *model.Pool, w http.ResponseWriter, r *http.Request, publicPay
 	}
 
 	state := payment.PaymentStates[0].PaymentState
+	var body model.SocketBody
+	if state != enum.CurrencySelection {
+		body = model.SocketBody{
+			InitialState:   true,
+			Currency:       payment.PayCurrency.String(),
+			PayAddress:     payment.PayAddress,
+			PayAmount:      payment.PaymentStates[0].PayAmount.String(),
+			ExpireTime:     model.GetWaitingCreateDate(payment).Add(15 * time.Minute),
+			Mode:           payment.Mode.String(),
+			SuccessPageURL: payment.SuccessPageUrl,
+			FailurePageURL: payment.FailurePageUrl,
+		}
+	}
 
 	switch state {
 	case enum.CurrencySelection:
@@ -40,19 +54,19 @@ func ServeWs(pool *model.Pool, w http.ResponseWriter, r *http.Request, publicPay
 		payCurrency, _ := enum.ParseStringToCryptoCurrencyEnum(currency)
 		publicPaymentService.HandleNewInvoice(payment, payCurrency)
 	case enum.Waiting:
-		client.SendWaiting(payment)
+		client.SendWaiting(body)
 	case enum.Paid:
-		client.SendReceivedTX()
+		client.SendReceivedTX(body)
 	case enum.Confirmed:
-		client.SendConfirmed()
+		client.SendConfirmed(body)
 	case enum.Forwarded:
-		client.SendConfirmed()
+		client.SendConfirmed(body)
 	case enum.Finished:
-		client.SendConfirmed()
+		client.SendConfirmed(body)
 	case enum.Expired:
-		client.SendExpired()
+		client.SendExpired(body)
 	case enum.Failed:
-		client.SendFailed()
+		client.SendFailed(body)
 	}
 	client.Read()
 }
