@@ -62,12 +62,14 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 	}
 
 	payment := model.Payment{
-		Mode:          apiKey.Mode,
-		PriceAmount:   invoiceRequestDto.PriceAmount,
-		PriceCurrency: priceCurrency,
-		PayCurrency:   enum.NOT_SELECTED,
-		PaymentStates: []model.PaymentState{initialState},
-		CallbackUrl:   invoiceRequestDto.CallbackUrl,
+		Mode:           apiKey.Mode,
+		PriceAmount:    invoiceRequestDto.PriceAmount,
+		PriceCurrency:  priceCurrency,
+		PayCurrency:    enum.NOT_SELECTED,
+		PaymentStates:  []model.PaymentState{initialState},
+		CallbackUrl:    invoiceRequestDto.CallbackUrl,
+		SuccessPageUrl: invoiceRequestDto.SuccessPageUrl,
+		FailurePageUrl: invoiceRequestDto.FailurePageUrl,
 	}
 	payment.ID = uuid.New()
 
@@ -78,16 +80,18 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 	}
 
 	paymentResponseDto := publicApi.InvoiceResponseDto{
-		Id:            payment.ID.String(),
-		PayAddress:    payment.PayAddress,
-		PriceAmount:   payment.PriceAmount,
-		PriceCurrency: payment.PriceCurrency.String(),
-		ActuallyPaid:  payment.PaymentStates[0].ActuallyPaid.String(),
-		CallbackUrl:   payment.CallbackUrl,
-		InvoiceUrl:    utils.Opts.PaymentBaseUrl + payment.ID.String(),
-		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
-		CreatedAt:     payment.CreatedAt,
-		UpdatedAt:     payment.UpdatedAt,
+		Id:             payment.ID.String(),
+		PayAddress:     payment.PayAddress,
+		PriceAmount:    payment.PriceAmount,
+		PriceCurrency:  payment.PriceCurrency.String(),
+		ActuallyPaid:   payment.PaymentStates[0].ActuallyPaid.String(),
+		CallbackUrl:    payment.CallbackUrl,
+		SuccessPageUrl: payment.SuccessPageUrl,
+		FailurePageUrl: payment.FailurePageUrl,
+		InvoiceUrl:     utils.Opts.PaymentBaseUrl + payment.ID.String(),
+		PaymentState:   payment.PaymentStates[0].PaymentState.String(),
+		CreatedAt:      payment.CreatedAt,
+		UpdatedAt:      payment.UpdatedAt,
 	}
 	return publicApi.Response(http.StatusCreated, paymentResponseDto), nil
 }

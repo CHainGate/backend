@@ -172,6 +172,8 @@ components:
         - payCurrency
         - actuallyPaid
         - callbackUrl
+        - successPageUrl
+        - failurePageUrl
         - paymentState
         - createdAt
         - updatedAt
@@ -194,6 +196,10 @@ components:
         callbackUrl:
           type: string
         invoiceUrl:
+          type: string
+        successPageUrl:
+          type: string
+        failurePageUrl:
           type: string
         paymentState:
           type: string
@@ -220,6 +226,8 @@ components:
         - priceCurrency
         - priceAmount
         - callbackUrl
+        - successPageUrl
+        - failurePageUrl
       properties:
         priceCurrency:
           type: string
@@ -230,4 +238,8 @@ components:
           type: number
           format: double
         callbackUrl:
+          type: string
+        successPageUrl:
+          type: string
+        failurePageUrl:
           type: string
