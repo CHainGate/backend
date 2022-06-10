@@ -98,15 +98,22 @@ func (s *WalletApiService) GetWallets(ctx context.Context, mode string, authoriz
 		return configApi.Response(http.StatusForbidden, nil), errors.New("not authorized")
 	}
 
+	parsedMode, ok := enum.ParseStringToModeEnum(mode)
+	if !ok {
+		return configApi.Response(http.StatusBadRequest, nil), errors.New("wrong mode")
+	}
+
 	result := make([]configApi.WalletResponseDto, 0)
 
 	for _, wallet := range merchant.Wallets {
-		result = append(result, configApi.WalletResponseDto{
-			Id:       wallet.ID.String(),
-			Mode:     wallet.Mode.String(),
-			Currency: wallet.Currency.String(),
-			Address:  wallet.Address,
-		})
+		if wallet.Mode == parsedMode {
+			result = append(result, configApi.WalletResponseDto{
+				Id:       wallet.ID.String(),
+				Mode:     wallet.Mode.String(),
+				Currency: wallet.Currency.String(),
+				Address:  wallet.Address,
+			})
+		}
 	}
 
 	return configApi.Response(http.StatusOK, result), nil
