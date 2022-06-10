@@ -55,7 +55,7 @@ type Wallet struct {
 type ApiKey struct {
 	Base
 	MerchantId uuid.UUID `gorm:"index:api_key_index,unique;type:uuid"`
-	Mode       enum.Mode `gorm:"index:api_key_index,unique"`
+	Mode       enum.Mode `gorm:"index:api_key_index,unique,where:deleted_at IS NULL"`
 	ApiKey     string
 	Secret     string
 	SecretSalt []byte

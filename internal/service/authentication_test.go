@@ -109,7 +109,7 @@ func NewApiKeyRepositoryMock() (sqlmock.Sqlmock, repository.IApiKeyRepository) {
 
 func TestCreateJwtToken(t *testing.T) {
 	jwtDuration := time.Hour * 24
-	token, err := createJwtToken("test@email.com", jwtDuration)
+	token, err := createJwtToken("test@email.com", "test", jwtDuration)
 	if err != nil {
 		t.Errorf("Cannot create JWT Token, got error %s", err.Error())
 	}
@@ -143,7 +143,7 @@ func TestHandleAuthorization(t *testing.T) {
 	mock.ExpectQuery("SELECT (.+) FROM \"email_verifications\"").WithArgs(testMerchant.ID).WillReturnRows(verificationRow)
 	mock.ExpectQuery("SELECT (.+) FROM \"wallets\"").WithArgs(testMerchant.ID).WillReturnRows(sqlmock.NewRows([]string{""}))
 
-	token, err := createJwtToken(testMerchant.Email, time.Hour*1)
+	token, err := createJwtToken(testMerchant.Email, testMerchant.FirstName, time.Hour*1)
 	if err != nil {
 		t.Errorf("")
 	}

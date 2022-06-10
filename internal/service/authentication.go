@@ -73,7 +73,7 @@ func (s *authenticationService) HandleLogin(email string, password string) (stri
 		return "", err
 	}
 
-	token, err := createJwtToken(merchant.Email, jwtDuration)
+	token, err := createJwtToken(merchant.Email, merchant.FirstName, jwtDuration)
 	if err != nil {
 		return "", err
 	}
@@ -213,10 +213,11 @@ func (s *authenticationService) CreateMerchant(registerRequestDto configApi.Regi
 	return nil
 }
 
-func createJwtToken(issuer string, duration time.Duration) (string, error) {
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Issuer:    issuer,
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
+func createJwtToken(issuer string, firstName string, duration time.Duration) (string, error) {
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"iss":       issuer,
+		"firstName": firstName,
+		"exp":       jwt.NewNumericDate(time.Now().Add(duration)),
 	})
 
 	return claims.SignedString([]byte(utils.Opts.JwtSecret))
