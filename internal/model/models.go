@@ -110,6 +110,7 @@ type Client struct {
 }
 
 type SocketBody struct {
+	InitialState   bool      `json:"initialState"`
 	Currency       string    `json:"currency"`
 	PayAddress     string    `json:"payAddress"`
 	PayAmount      string    `json:"payAmount"`
@@ -129,37 +130,28 @@ func GetWaitingCreateDate(payment *Payment) time.Time {
 	return payment.PaymentStates[index].CreatedAt
 }
 
-func (c *Client) SendWaiting(p *Payment) {
-	body := SocketBody{
-		Currency:       p.PayCurrency.String(),
-		PayAddress:     p.PayAddress,
-		PayAmount:      p.PaymentStates[0].PayAmount.String(),
-		ExpireTime:     GetWaitingCreateDate(p).Add(15 * time.Minute),
-		Mode:           p.Mode.String(),
-		SuccessPageURL: p.SuccessPageUrl,
-		FailurePageURL: p.FailurePageUrl,
-	}
+func (c *Client) SendWaiting(body SocketBody) {
 	message := Message{MessageType: enum.Waiting.String(), Body: body}
 	c.Pool.Broadcast <- message
 }
 
-func (c *Client) SendReceivedTX() {
-	message := Message{MessageType: enum.Paid.String(), Body: enum.GetCryptoCurrencyDetails()}
+func (c *Client) SendReceivedTX(body SocketBody) {
+	message := Message{MessageType: enum.Paid.String(), Body: body}
 	c.Pool.Broadcast <- message
 }
 
-func (c *Client) SendConfirmed() {
-	message := Message{MessageType: enum.Confirmed.String(), Body: enum.GetCryptoCurrencyDetails()}
+func (c *Client) SendConfirmed(body SocketBody) {
+	message := Message{MessageType: enum.Confirmed.String(), Body: body}
 	c.Pool.Broadcast <- message
 }
 
-func (c *Client) SendExpired() {
-	message := Message{MessageType: enum.Expired.String(), Body: enum.GetCryptoCurrencyDetails()}
+func (c *Client) SendExpired(body SocketBody) {
+	message := Message{MessageType: enum.Expired.String(), Body: body}
 	c.Pool.Broadcast <- message
 }
 
-func (c *Client) SendFailed() {
-	message := Message{MessageType: enum.Failed.String(), Body: enum.GetCryptoCurrencyDetails()}
+func (c *Client) SendFailed(body SocketBody) {
+	message := Message{MessageType: enum.Failed.String(), Body: body}
 	c.Pool.Broadcast <- message
 }
 

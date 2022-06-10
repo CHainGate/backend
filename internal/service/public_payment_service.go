@@ -196,6 +196,7 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 	}
 
 	body := model.SocketBody{
+		InitialState:   false,
 		Currency:       payment.PayCurrency.String(),
 		PayAddress:     payment.PayAddress,
 		PayAmount:      resp.PayAmount,
