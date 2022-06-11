@@ -17,5 +17,3 @@ docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i 
 goimports -w .
  ```
  
- Code Coverage 80%
- 
