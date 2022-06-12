@@ -84,17 +84,12 @@ func (s *InvoiceApiService) NewInvoice(_ context.Context, xAPIKEY string, invoic
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	actuallyPaid, err := utils.ConvertAmountToBase(payment.PayCurrency, payment.PaymentStates[0].ActuallyPaid.Int)
-	if err != nil {
-		return publicApi.Response(http.StatusInternalServerError, nil), err
-	}
-
 	paymentResponseDto := publicApi.InvoiceResponseDto{
 		Id:             payment.ID.String(),
 		PayAddress:     payment.PayAddress,
 		PriceAmount:    payment.PriceAmount,
 		PriceCurrency:  payment.PriceCurrency.String(),
-		ActuallyPaid:   actuallyPaid.String(),
+		ActuallyPaid:   payment.PaymentStates[0].ActuallyPaid.String(),
 		CallbackUrl:    payment.CallbackUrl,
 		SuccessPageUrl: payment.SuccessPageUrl,
 		FailurePageUrl: payment.FailurePageUrl,
