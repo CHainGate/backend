@@ -10,9 +10,11 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/joho/godotenv v1.4.0
 	github.com/rs/cors v1.8.2
+	github.com/shopspring/decimal v1.2.0
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
 	golang.org/x/exp v0.0.0-20220518171630-0b5c67f07fdf
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
+	gopkg.in/h2non/gock.v1 v1.1.2
 	gorm.io/driver/postgres v1.3.1
 	gorm.io/gorm v1.23.1
 )
@@ -34,5 +36,4 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
-	gopkg.in/h2non/gock.v1 v1.1.2 // indirect
 )

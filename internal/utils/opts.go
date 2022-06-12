@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"github.com/CHainGate/backend/pkg/enum"
+	"github.com/shopspring/decimal"
 	"log"
 	"math/big"
 	"os"
@@ -86,17 +87,16 @@ func lookupEnvInt(key string, defaultValues ...int) int {
 	return 0
 }
 
-func ConvertAmountToBase(currency enum.CryptoCurrency, amount big.Int) (*big.Float, error) {
+func ConvertAmountToBase(currency enum.CryptoCurrency, amount big.Int) (*decimal.Decimal, error) {
 	details := enum.GetCryptoCurrencyDetails()
 	for _, c := range details {
 		if currency.String() == c.ShortName {
-			conversionFactor, _, err := big.NewFloat(0).Parse(c.ConversionFactor, 10)
+			conversionFactor, err := strconv.ParseFloat(c.ConversionFactor, 64)
 			if err != nil {
 				return nil, err
 			}
-			floatAmount := big.NewFloat(0).SetInt(&amount)
-			floatAmount.Quo(floatAmount, conversionFactor)
-			return floatAmount, nil
+			newAmount := decimal.NewFromBigInt(&amount, 0).Div(decimal.NewFromFloat(conversionFactor))
+			return &newAmount, nil
 		}
 	}
 	return nil, errors.New("convertToBase amount failed")
