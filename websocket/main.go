@@ -40,6 +40,7 @@ func ServeWs(pool *model.Pool, w http.ResponseWriter, r *http.Request, publicPay
 			Currency:       payment.PayCurrency.String(),
 			PayAddress:     payment.PayAddress,
 			PayAmount:      payment.PaymentStates[0].PayAmount.String(),
+			ActuallyPaid:   payment.PaymentStates[0].ActuallyPaid.String(),
 			ExpireTime:     model.GetWaitingCreateDate(payment).Add(15 * time.Minute),
 			Mode:           payment.Mode.String(),
 			SuccessPageURL: payment.SuccessPageUrl,
@@ -55,6 +56,8 @@ func ServeWs(pool *model.Pool, w http.ResponseWriter, r *http.Request, publicPay
 		publicPaymentService.HandleNewInvoice(payment, payCurrency)
 	case enum.Waiting:
 		client.SendWaiting(body)
+	case enum.PartiallyPaid:
+		client.SendPartiallyPaid(body)
 	case enum.Paid:
 		client.SendReceivedTX(body)
 	case enum.Confirmed:

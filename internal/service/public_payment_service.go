@@ -228,6 +228,7 @@ func (s *publicPaymentService) handleBlockchainResponseInvoice(resp *PaymentResp
 		Currency:       payment.PayCurrency.String(),
 		PayAddress:     payment.PayAddress,
 		PayAmount:      resp.PayAmount,
+		ActuallyPaid:   payment.PaymentStates[0].ActuallyPaid.String(),
 		ExpireTime:     model.GetWaitingCreateDate(payment).Add(15 * time.Minute),
 		Mode:           payment.Mode.String(),
 		SuccessPageURL: payment.SuccessPageUrl,
