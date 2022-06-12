@@ -70,7 +70,10 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 
 	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, payCurrency, wallet, apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
 	if err != nil {
-		return publicApi.ImplResponse{}, err
+		if err.Error() == "Pay amount is too low " {
+			return publicApi.Response(http.StatusBadRequest, nil), err
+		}
+		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	paymentResponseDto := publicApi.PaymentResponseDto{

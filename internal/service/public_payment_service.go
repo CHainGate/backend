@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/CHainGate/backend/internal/config"
@@ -230,8 +231,12 @@ func createBtcPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wall
 	configuration := btcClientApi.NewConfiguration()
 	configuration.Servers[0].URL = utils.Opts.BitcoinBaseUrl
 	apiClient := btcClientApi.NewAPIClient(configuration)
-	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequestDto(paymentRequest).Execute()
+	resp, h, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequestDto(paymentRequest).Execute()
 	if err != nil {
+		body, _ := ioutil.ReadAll(h.Body)
+		if string(body) == "\"Pay amount is to low \"\n" {
+			return nil, errors.New("Pay amount is too low ")
+		}
 		return nil, err
 	}
 	return resp, nil
