@@ -11,6 +11,7 @@ package publicService
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/model"
@@ -29,20 +30,20 @@ import (
 type InvoiceApiService struct {
 	authenticationService service.IAuthenticationService
 	publicApiService      service.IPublicPaymentService
-	merchantRepository    repository.IMerchantRepository
+	paymentRepository     repository.IPaymentRepository
 }
 
 // NewInvoiceApiService creates a default api service
 func NewInvoiceApiService(
 	publicApiService service.IPublicPaymentService,
 	authenticationService service.IAuthenticationService,
-	merchantRepository repository.IMerchantRepository,
+	paymentRepository repository.IPaymentRepository,
 ) publicApi.InvoiceApiServicer {
-	return &InvoiceApiService{authenticationService, publicApiService, merchantRepository}
+	return &InvoiceApiService{authenticationService, publicApiService, paymentRepository}
 }
 
 // NewInvoice - Create a new invoice
-func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invoiceRequestDto publicApi.InvoiceRequestDto) (publicApi.ImplResponse, error) {
+func (s *InvoiceApiService) NewInvoice(_ context.Context, xAPIKEY string, invoiceRequestDto publicApi.InvoiceRequestDto) (publicApi.ImplResponse, error) {
 	merchant, apiKey, err := s.authenticationService.HandleApiAuthentication(xAPIKEY)
 	if err != nil {
 		if err.Error() == "not authorized" {
@@ -55,6 +56,10 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 	if !ok {
 	}
 
+	if len(merchant.Wallets) == 0 {
+		return publicApi.Response(http.StatusBadRequest, nil), errors.New("no outcome addresses defined. ")
+	}
+
 	initialState := model.PaymentState{
 		PaymentState: enum.CurrencySelection,
 		PayAmount:    model.NewBigIntFromInt(0),
@@ -62,6 +67,8 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 	}
 
 	payment := model.Payment{
+		Base:           model.Base{ID: uuid.New()},
+		MerchantId:     merchant.ID,
 		Mode:           apiKey.Mode,
 		PriceAmount:    invoiceRequestDto.PriceAmount,
 		PriceCurrency:  priceCurrency,
@@ -71,10 +78,8 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 		SuccessPageUrl: invoiceRequestDto.SuccessPageUrl,
 		FailurePageUrl: invoiceRequestDto.FailurePageUrl,
 	}
-	payment.ID = uuid.New()
 
-	merchant.Payments = append(merchant.Payments, payment)
-	err = s.merchantRepository.Update(merchant)
+	err = s.paymentRepository.Create(&payment)
 	if err != nil {
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}

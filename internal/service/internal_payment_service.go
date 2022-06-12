@@ -75,14 +75,17 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 		return err
 	}
 
-	for _, state := range currentPayment.PaymentStates {
-		if state.PaymentState.String() == payment.PaymentState {
-			log.Println(fmt.Sprintf("Payment %s with state %s already updated", payment.PaymentId, payment.PaymentState))
-			return nil
+	paymentState, ok := enum.ParseStringToStateEnum(payment.PaymentState)
+
+	if paymentState != enum.PartiallyPaid {
+		for _, state := range currentPayment.PaymentStates {
+			if state.PaymentState.String() == payment.PaymentState {
+				log.Println(fmt.Sprintf("Payment %s with state %s already updated", payment.PaymentId, payment.PaymentState))
+				return nil
+			}
 		}
 	}
 
-	paymentState, ok := enum.ParseStringToStateEnum(payment.PaymentState)
 	if !ok {
 		return err
 	}
@@ -111,6 +114,7 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 		Currency:       currentPayment.PayCurrency.String(),
 		PayAddress:     currentPayment.PayAddress,
 		PayAmount:      currentPayment.PaymentStates[0].PayAmount.String(),
+		ActuallyPaid:   currentPayment.PaymentStates[0].ActuallyPaid.String(),
 		ExpireTime:     model.GetWaitingCreateDate(currentPayment).Add(15 * time.Minute),
 		Mode:           currentPayment.Mode.String(),
 		SuccessPageURL: currentPayment.SuccessPageUrl,
@@ -132,15 +136,23 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 
 func (s *internalPaymentService) callWebhook(payment *model.Payment) error {
 	currentState := payment.PaymentStates[0] //states are sorted
+	payAmount, err := utils.ConvertAmountToBase(payment.PayCurrency, currentState.PayAmount.Int)
+	if err != nil {
+		return err
+	}
+	actuallyPaid, err := utils.ConvertAmountToBase(payment.PayCurrency, currentState.ActuallyPaid.Int)
+	if err != nil {
+		return err
+	}
 	body := proxyClientApi.WebHookBody{
 		Data: proxyClientApi.WebHookData{
 			PaymentId:     payment.ID.String(),
 			PayAddress:    payment.PayAddress,
 			PriceAmount:   payment.PriceAmount,
 			PriceCurrency: payment.PriceCurrency.String(),
-			PayAmount:     currentState.PayAmount.String(),
+			PayAmount:     payAmount.String(),
 			PayCurrency:   payment.PayCurrency.String(),
-			ActuallyPaid:  currentState.ActuallyPaid.String(),
+			ActuallyPaid:  actuallyPaid.String(),
 			PaymentState:  currentState.PaymentState.String(),
 			CreatedAt:     payment.CreatedAt,
 			UpdatedAt:     payment.UpdatedAt,

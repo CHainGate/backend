@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
+	"io/ioutil"
 	"time"
 
 	"github.com/CHainGate/backend/internal/config"
@@ -44,50 +44,46 @@ func NewPublicPaymentService(merchantRepository repository.IMerchantRepository, 
 }
 
 func (s *publicPaymentService) HandleNewPayment(priceCurrency enum.FiatCurrency, priceAmount float64, payCurrency enum.CryptoCurrency, wallet string, mode enum.Mode, callback string, merchant *model.Merchant) (*model.Payment, error) {
+	var paymentReponse PaymentResponse
 	if payCurrency == enum.ETH {
-		paymentResponse, err := createEthPayment(priceCurrency, priceAmount, wallet, mode)
+		response, err := createEthPayment(priceCurrency, priceAmount, wallet, mode)
 		if err != nil {
 			return nil, err
 		}
 
-		p := &PaymentResponse{
-			PaymentId:     paymentResponse.PaymentId,
-			PaymentState:  paymentResponse.PaymentState,
-			PayCurrency:   paymentResponse.PayCurrency,
-			PayAmount:     paymentResponse.PayAmount,
-			PriceCurrency: paymentResponse.PriceCurrency,
-			PriceAmount:   paymentResponse.PriceAmount,
-			PayAddress:    paymentResponse.PayAddress,
+		paymentReponse = PaymentResponse{
+			PaymentId:     response.PaymentId,
+			PaymentState:  response.PaymentState,
+			PayCurrency:   response.PayCurrency,
+			PayAmount:     response.PayAmount,
+			PriceCurrency: response.PriceCurrency,
+			PriceAmount:   response.PriceAmount,
+			PayAddress:    response.PayAddress,
 		}
-		payment, err := s.handleBlockchainResponse(p, mode, callback, merchant)
-		if err != nil {
-			return nil, err
-		}
-		return payment, nil
 	}
 
 	if payCurrency == enum.BTC {
-		paymentResponse, err := createBtcPayment(priceCurrency, priceAmount, wallet, mode)
+		response, err := createBtcPayment(priceCurrency, priceAmount, wallet, mode)
 		if err != nil {
 			return nil, err
 		}
 
-		p := &PaymentResponse{
-			PaymentId:     paymentResponse.PaymentId,
-			PaymentState:  &paymentResponse.PaymentState,
-			PayCurrency:   paymentResponse.PayCurrency,
-			PayAmount:     paymentResponse.PayAmount,
-			PriceCurrency: paymentResponse.PriceCurrency,
-			PriceAmount:   paymentResponse.PriceAmount,
-			PayAddress:    paymentResponse.PayAddress,
+		paymentReponse = PaymentResponse{
+			PaymentId:     response.PaymentId,
+			PaymentState:  &response.PaymentState,
+			PayCurrency:   response.PayCurrency,
+			PayAmount:     response.PayAmount,
+			PriceCurrency: response.PriceCurrency,
+			PriceAmount:   response.PriceAmount,
+			PayAddress:    response.PayAddress,
 		}
-		payment, err := s.handleBlockchainResponse(p, mode, callback, merchant)
-		if err != nil {
-			return nil, err
-		}
-		return payment, nil
 	}
-	return nil, errors.New(fmt.Sprintf("currency %s not implemented", payCurrency.String()))
+
+	payment, err := s.handleBlockchainResponsePayment(&paymentReponse, mode, callback, merchant)
+	if err != nil {
+		return nil, err
+	}
+	return payment, nil
 }
 
 func (s *publicPaymentService) HandleNewInvoice(initialPayment *model.Payment, currency enum.CryptoCurrency) (*model.Payment, error) {
@@ -101,20 +97,52 @@ func (s *publicPaymentService) HandleNewInvoice(initialPayment *model.Payment, c
 			wallet = w
 		}
 	}
+
 	initialPayment.Wallet = &wallet
-	paymentResponse, err := createEthPayment(initialPayment.PriceCurrency, initialPayment.PriceAmount, initialPayment.Wallet.Address, initialPayment.Mode)
-	if err != nil {
-		return nil, err
+
+	var paymentResponse PaymentResponse
+	if currency == enum.ETH {
+		response, err := createEthPayment(initialPayment.PriceCurrency, initialPayment.PriceAmount, initialPayment.Wallet.Address, initialPayment.Mode)
+		if err != nil {
+			return nil, err
+		}
+
+		paymentResponse = PaymentResponse{
+			PaymentId:     response.PaymentId,
+			PaymentState:  response.PaymentState,
+			PayCurrency:   response.PayCurrency,
+			PayAmount:     response.PayAmount,
+			PriceCurrency: response.PriceCurrency,
+			PriceAmount:   response.PriceAmount,
+			PayAddress:    response.PayAddress,
+		}
 	}
 
-	payment, err := s.handleEthClientResponseUpdate(paymentResponse, initialPayment)
+	if currency == enum.BTC {
+		response, err := createBtcPayment(initialPayment.PriceCurrency, initialPayment.PriceAmount, initialPayment.Wallet.Address, initialPayment.Mode)
+		if err != nil {
+			return nil, err
+		}
+
+		paymentResponse = PaymentResponse{
+			PaymentId:     response.PaymentId,
+			PaymentState:  &response.PaymentState,
+			PayCurrency:   response.PayCurrency,
+			PayAmount:     response.PayAmount,
+			PriceCurrency: response.PriceCurrency,
+			PriceAmount:   response.PriceAmount,
+			PayAddress:    response.PayAddress,
+		}
+	}
+
+	payment, err := s.handleBlockchainResponseInvoice(&paymentResponse, initialPayment)
 	if err != nil {
 		return nil, err
 	}
 	return payment, nil
 }
 
-func (s *publicPaymentService) handleBlockchainResponse(resp *PaymentResponse, mode enum.Mode, callbackUrl string, merchant *model.Merchant) (*model.Payment, error) {
+func (s *publicPaymentService) handleBlockchainResponsePayment(resp *PaymentResponse, mode enum.Mode, callbackUrl string, merchant *model.Merchant) (*model.Payment, error) {
 	blockChainPaymentId, err := uuid.Parse(resp.PaymentId)
 	if err != nil {
 		return nil, err
@@ -139,6 +167,8 @@ func (s *publicPaymentService) handleBlockchainResponse(resp *PaymentResponse, m
 		return nil, err
 	}
 	payment := model.Payment{
+		Base:                model.Base{ID: uuid.New()},
+		MerchantId:          merchant.ID,
 		Mode:                mode,
 		PriceAmount:         resp.PriceAmount,
 		PriceCurrency:       priceCurrency,
@@ -149,10 +179,8 @@ func (s *publicPaymentService) handleBlockchainResponse(resp *PaymentResponse, m
 		PayAddress:          resp.PayAddress,
 		Wallet:              &merchant.Wallets[0],
 	}
-	payment.ID = uuid.New()
 
-	merchant.Payments = append(merchant.Payments, payment)
-	err = s.merchantRepository.Update(merchant)
+	err = s.paymentRepository.Create(&payment)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +188,7 @@ func (s *publicPaymentService) handleBlockchainResponse(resp *PaymentResponse, m
 	return &payment, nil
 }
 
-func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.PaymentResponse, payment *model.Payment) (*model.Payment, error) {
+func (s *publicPaymentService) handleBlockchainResponseInvoice(resp *PaymentResponse, payment *model.Payment) (*model.Payment, error) {
 	blockChainPaymentId, err := uuid.Parse(resp.PaymentId)
 	if err != nil {
 		return nil, err
@@ -200,6 +228,7 @@ func (s *publicPaymentService) handleEthClientResponseUpdate(resp *ethClientApi.
 		Currency:       payment.PayCurrency.String(),
 		PayAddress:     payment.PayAddress,
 		PayAmount:      resp.PayAmount,
+		ActuallyPaid:   payment.PaymentStates[0].ActuallyPaid.String(),
 		ExpireTime:     model.GetWaitingCreateDate(payment).Add(15 * time.Minute),
 		Mode:           payment.Mode.String(),
 		SuccessPageURL: payment.SuccessPageUrl,
@@ -230,8 +259,12 @@ func createBtcPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wall
 	configuration := btcClientApi.NewConfiguration()
 	configuration.Servers[0].URL = utils.Opts.BitcoinBaseUrl
 	apiClient := btcClientApi.NewAPIClient(configuration)
-	resp, _, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequestDto(paymentRequest).Execute()
+	resp, h, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequestDto(paymentRequest).Execute()
 	if err != nil {
+		body, _ := ioutil.ReadAll(h.Body)
+		if string(body) == "\"Pay amount is too low \"\n" {
+			return nil, errors.New("Pay amount is too low ")
+		}
 		return nil, err
 	}
 	return resp, nil

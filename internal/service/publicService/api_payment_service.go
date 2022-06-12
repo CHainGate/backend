@@ -12,6 +12,8 @@ package publicService
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/CHainGate/backend/internal/utils"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/service"
@@ -62,9 +64,26 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		}
 	}
 
+	if wallet == "" {
+		errorMessage := fmt.Sprintf("no outcome address defined for %s in mode %s", payCurrency.String(), apiKey.Mode.String())
+		return publicApi.Response(http.StatusBadRequest, nil), errors.New(errorMessage)
+	}
+
 	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, payCurrency, wallet, apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)
 	if err != nil {
-		return publicApi.ImplResponse{}, err
+		if err.Error() == "Pay amount is too low " {
+			return publicApi.Response(http.StatusBadRequest, nil), err
+		}
+		return publicApi.Response(http.StatusInternalServerError, nil), err
+	}
+
+	payAmount, err := utils.ConvertAmountToBase(payment.PayCurrency, payment.PaymentStates[0].PayAmount.Int)
+	if err != nil {
+		return publicApi.Response(http.StatusInternalServerError, nil), err
+	}
+	actuallyPaid, err := utils.ConvertAmountToBase(payment.PayCurrency, payment.PaymentStates[0].ActuallyPaid.Int)
+	if err != nil {
+		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	paymentResponseDto := publicApi.PaymentResponseDto{
@@ -72,9 +91,9 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		PayAddress:    payment.PayAddress,
 		PriceAmount:   payment.PriceAmount,
 		PriceCurrency: payment.PriceCurrency.String(),
-		PayAmount:     payment.PaymentStates[0].PayAmount.String(),
+		PayAmount:     payAmount.String(),
 		PayCurrency:   payment.PayCurrency.String(),
-		ActuallyPaid:  payment.PaymentStates[0].ActuallyPaid.String(),
+		ActuallyPaid:  actuallyPaid.String(),
 		CallbackUrl:   payment.CallbackUrl,
 		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
 		CreatedAt:     payment.CreatedAt,

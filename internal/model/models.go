@@ -114,6 +114,7 @@ type SocketBody struct {
 	Currency       string    `json:"currency"`
 	PayAddress     string    `json:"payAddress"`
 	PayAmount      string    `json:"payAmount"`
+	ActuallyPaid   string    `json:"actuallyPaid"`
 	ExpireTime     time.Time `json:"expireTime"`
 	Mode           string    `json:"mode"`
 	SuccessPageURL string    `json:"successPageURL"`
@@ -132,6 +133,11 @@ func GetWaitingCreateDate(payment *Payment) time.Time {
 
 func (c *Client) SendWaiting(body SocketBody) {
 	message := Message{MessageType: enum.Waiting.String(), Body: body}
+	c.Pool.Broadcast <- message
+}
+
+func (c *Client) SendPartiallyPaid(body SocketBody) {
+	message := Message{MessageType: enum.PartiallyPaid.String(), Body: body}
 	c.Pool.Broadcast <- message
 }
 
