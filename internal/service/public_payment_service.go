@@ -261,7 +261,7 @@ func createBtcPayment(priceCurrency enum.FiatCurrency, priceAmount float64, wall
 	resp, h, err := apiClient.PaymentApi.CreatePayment(context.Background()).PaymentRequestDto(paymentRequest).Execute()
 	if err != nil {
 		body, _ := ioutil.ReadAll(h.Body)
-		if string(body) == "\"Pay amount is to low \"\n" {
+		if string(body) == "\"Pay amount is too low \"\n" {
 			return nil, errors.New("Pay amount is too low ")
 		}
 		return nil, err
