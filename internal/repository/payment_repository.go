@@ -16,6 +16,7 @@ type IPaymentRepository interface {
 	FindByMerchantIdAndMode(merchantId uuid.UUID, mode enum.Mode) ([]model.Payment, error)
 	FindByBlockchainIdAndCurrency(id string, currency enum.CryptoCurrency) (*model.Payment, error)
 	Update(payment *model.Payment) error
+	Create(payment *model.Payment) error
 }
 
 func NewPaymentRepository(db *gorm.DB) (IPaymentRepository, error) {
@@ -59,6 +60,14 @@ func (r *paymentRepository) FindByBlockchainIdAndCurrency(id string, currency en
 
 func (r *paymentRepository) Update(payment *model.Payment) error {
 	result := r.DB.Save(&payment)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (r *paymentRepository) Create(payment *model.Payment) error {
+	result := r.DB.Create(&payment)
 	if result.Error != nil {
 		return result.Error
 	}

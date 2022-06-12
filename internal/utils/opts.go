@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"errors"
 	"flag"
+	"github.com/CHainGate/backend/pkg/enum"
 	"log"
+	"math/big"
 	"os"
 	"strconv"
 
@@ -81,4 +84,20 @@ func lookupEnvInt(key string, defaultValues ...int) int {
 		}
 	}
 	return 0
+}
+
+func ConvertAmountToBase(currency enum.CryptoCurrency, amount big.Int) (*big.Float, error) {
+	details := enum.GetCryptoCurrencyDetails()
+	for _, c := range details {
+		if currency.String() == c.ShortName {
+			conversionFactor, _, err := big.NewFloat(0).Parse(c.ConversionFactor, 10)
+			if err != nil {
+				return nil, err
+			}
+			floatAmount := big.NewFloat(0).SetInt(&amount)
+			floatAmount.Quo(floatAmount, conversionFactor)
+			return floatAmount, nil
+		}
+	}
+	return nil, errors.New("convertToBase amount failed")
 }

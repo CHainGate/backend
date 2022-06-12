@@ -54,7 +54,7 @@ func main() {
 
 	// public api
 	publicPaymentService := service.NewPublicPaymentService(merchantRepo, paymentRepo, internalPaymentService)
-	publicInvoiceService := publicService.NewInvoiceApiService(publicPaymentService, authService, merchantRepo)
+	publicInvoiceService := publicService.NewInvoiceApiService(publicPaymentService, authService, paymentRepo)
 	PaymentApiService := publicService.NewPaymentApiService(publicPaymentService, authService)
 	PaymentApiController := publicApi.NewPaymentApiController(PaymentApiService)
 	InvoiceApiController := publicApi.NewInvoiceApiController(publicInvoiceService)

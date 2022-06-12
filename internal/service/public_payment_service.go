@@ -140,6 +140,8 @@ func (s *publicPaymentService) handleBlockchainResponse(resp *PaymentResponse, m
 		return nil, err
 	}
 	payment := model.Payment{
+		Base:                model.Base{ID: uuid.New()},
+		MerchantId:          merchant.ID,
 		Mode:                mode,
 		PriceAmount:         resp.PriceAmount,
 		PriceCurrency:       priceCurrency,
@@ -150,10 +152,8 @@ func (s *publicPaymentService) handleBlockchainResponse(resp *PaymentResponse, m
 		PayAddress:          resp.PayAddress,
 		Wallet:              &merchant.Wallets[0],
 	}
-	payment.ID = uuid.New()
 
-	merchant.Payments = append(merchant.Payments, payment)
-	err = s.merchantRepository.Update(merchant)
+	err = s.paymentRepository.Create(&payment)
 	if err != nil {
 		return nil, err
 	}

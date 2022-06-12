@@ -30,16 +30,16 @@ import (
 type InvoiceApiService struct {
 	authenticationService service.IAuthenticationService
 	publicApiService      service.IPublicPaymentService
-	merchantRepository    repository.IMerchantRepository
+	paymentRepository     repository.IPaymentRepository
 }
 
 // NewInvoiceApiService creates a default api service
 func NewInvoiceApiService(
 	publicApiService service.IPublicPaymentService,
 	authenticationService service.IAuthenticationService,
-	merchantRepository repository.IMerchantRepository,
+	paymentRepository repository.IPaymentRepository,
 ) publicApi.InvoiceApiServicer {
-	return &InvoiceApiService{authenticationService, publicApiService, merchantRepository}
+	return &InvoiceApiService{authenticationService, publicApiService, paymentRepository}
 }
 
 // NewInvoice - Create a new invoice
@@ -67,6 +67,8 @@ func (s *InvoiceApiService) NewInvoice(_ context.Context, xAPIKEY string, invoic
 	}
 
 	payment := model.Payment{
+		Base:           model.Base{ID: uuid.New()},
+		MerchantId:     merchant.ID,
 		Mode:           apiKey.Mode,
 		PriceAmount:    invoiceRequestDto.PriceAmount,
 		PriceCurrency:  priceCurrency,
@@ -76,10 +78,13 @@ func (s *InvoiceApiService) NewInvoice(_ context.Context, xAPIKEY string, invoic
 		SuccessPageUrl: invoiceRequestDto.SuccessPageUrl,
 		FailurePageUrl: invoiceRequestDto.FailurePageUrl,
 	}
-	payment.ID = uuid.New()
 
-	merchant.Payments = append(merchant.Payments, payment)
-	err = s.merchantRepository.Update(merchant)
+	err = s.paymentRepository.Create(&payment)
+	if err != nil {
+		return publicApi.Response(http.StatusInternalServerError, nil), err
+	}
+
+	actuallyPaid, err := utils.ConvertAmountToBase(payment.PayCurrency, payment.PaymentStates[0].ActuallyPaid.Int)
 	if err != nil {
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -89,7 +94,7 @@ func (s *InvoiceApiService) NewInvoice(_ context.Context, xAPIKEY string, invoic
 		PayAddress:     payment.PayAddress,
 		PriceAmount:    payment.PriceAmount,
 		PriceCurrency:  payment.PriceCurrency.String(),
-		ActuallyPaid:   payment.PaymentStates[0].ActuallyPaid.String(),
+		ActuallyPaid:   actuallyPaid.String(),
 		CallbackUrl:    payment.CallbackUrl,
 		SuccessPageUrl: payment.SuccessPageUrl,
 		FailurePageUrl: payment.FailurePageUrl,

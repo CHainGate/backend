@@ -132,15 +132,23 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 
 func (s *internalPaymentService) callWebhook(payment *model.Payment) error {
 	currentState := payment.PaymentStates[0] //states are sorted
+	payAmount, err := utils.ConvertAmountToBase(payment.PayCurrency, currentState.PayAmount.Int)
+	if err != nil {
+		return err
+	}
+	actuallyPaid, err := utils.ConvertAmountToBase(payment.PayCurrency, currentState.ActuallyPaid.Int)
+	if err != nil {
+		return err
+	}
 	body := proxyClientApi.WebHookBody{
 		Data: proxyClientApi.WebHookData{
 			PaymentId:     payment.ID.String(),
 			PayAddress:    payment.PayAddress,
 			PriceAmount:   payment.PriceAmount,
 			PriceCurrency: payment.PriceCurrency.String(),
-			PayAmount:     currentState.PayAmount.String(),
+			PayAmount:     payAmount.String(),
 			PayCurrency:   payment.PayCurrency.String(),
-			ActuallyPaid:  currentState.ActuallyPaid.String(),
+			ActuallyPaid:  actuallyPaid.String(),
 			PaymentState:  currentState.PaymentState.String(),
 			CreatedAt:     payment.CreatedAt,
 			UpdatedAt:     payment.UpdatedAt,

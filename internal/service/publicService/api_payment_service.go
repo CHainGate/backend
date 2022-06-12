@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/CHainGate/backend/internal/utils"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/service"
@@ -76,14 +77,23 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
 
+	payAmount, err := utils.ConvertAmountToBase(payment.PayCurrency, payment.PaymentStates[0].PayAmount.Int)
+	if err != nil {
+		return publicApi.Response(http.StatusInternalServerError, nil), err
+	}
+	actuallyPaid, err := utils.ConvertAmountToBase(payment.PayCurrency, payment.PaymentStates[0].ActuallyPaid.Int)
+	if err != nil {
+		return publicApi.Response(http.StatusInternalServerError, nil), err
+	}
+
 	paymentResponseDto := publicApi.PaymentResponseDto{
 		Id:            payment.ID.String(),
 		PayAddress:    payment.PayAddress,
 		PriceAmount:   payment.PriceAmount,
 		PriceCurrency: payment.PriceCurrency.String(),
-		PayAmount:     payment.PaymentStates[0].PayAmount.String(),
+		PayAmount:     payAmount.String(),
 		PayCurrency:   payment.PayCurrency.String(),
-		ActuallyPaid:  payment.PaymentStates[0].ActuallyPaid.String(),
+		ActuallyPaid:  actuallyPaid.String(),
 		CallbackUrl:   payment.CallbackUrl,
 		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
 		CreatedAt:     payment.CreatedAt,
