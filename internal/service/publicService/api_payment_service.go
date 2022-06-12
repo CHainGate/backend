@@ -12,6 +12,7 @@ package publicService
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/service"
@@ -60,6 +61,11 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		if apiKey.Mode == w.Mode && payCurrency == w.Currency {
 			wallet = w.Address
 		}
+	}
+
+	if wallet == "" {
+		errorMessage := fmt.Sprintf("no outcome address defined for %s in mode %s", payCurrency.String(), apiKey.Mode.String())
+		return publicApi.Response(http.StatusBadRequest, nil), errors.New(errorMessage)
 	}
 
 	payment, err := s.publicApiService.HandleNewPayment(priceCurrency, paymentRequestDto.PriceAmount, payCurrency, wallet, apiKey.Mode, paymentRequestDto.CallbackUrl, merchant)

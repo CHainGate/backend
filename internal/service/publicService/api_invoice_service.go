@@ -11,6 +11,7 @@ package publicService
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/CHainGate/backend/internal/model"
@@ -42,7 +43,7 @@ func NewInvoiceApiService(
 }
 
 // NewInvoice - Create a new invoice
-func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invoiceRequestDto publicApi.InvoiceRequestDto) (publicApi.ImplResponse, error) {
+func (s *InvoiceApiService) NewInvoice(_ context.Context, xAPIKEY string, invoiceRequestDto publicApi.InvoiceRequestDto) (publicApi.ImplResponse, error) {
 	merchant, apiKey, err := s.authenticationService.HandleApiAuthentication(xAPIKEY)
 	if err != nil {
 		if err.Error() == "not authorized" {
@@ -53,6 +54,10 @@ func (s *InvoiceApiService) NewInvoice(ctx context.Context, xAPIKEY string, invo
 
 	priceCurrency, ok := enum.ParseStringToFiatCurrencyEnum(invoiceRequestDto.PriceCurrency)
 	if !ok {
+	}
+
+	if len(merchant.Wallets) == 0 {
+		return publicApi.Response(http.StatusBadRequest, nil), errors.New("no outcome addresses defined. ")
 	}
 
 	initialState := model.PaymentState{
