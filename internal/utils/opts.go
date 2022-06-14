@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"github.com/CHainGate/backend/pkg/enum"
-	"github.com/shopspring/decimal"
 	"log"
 	"math/big"
 	"os"
@@ -87,17 +86,35 @@ func lookupEnvInt(key string, defaultValues ...int) int {
 	return 0
 }
 
-func ConvertAmountToBase(currency enum.CryptoCurrency, amount big.Int) (*decimal.Decimal, error) {
+func ConvertAmountToBaseString(currency enum.CryptoCurrency, amount big.Int) (string, error) {
+	if amount.Cmp(big.NewInt(0)) == 0 {
+		return "0", nil
+	}
+
 	details := enum.GetCryptoCurrencyDetails()
 	for _, c := range details {
 		if currency.String() == c.ShortName {
 			conversionFactor, err := strconv.ParseFloat(c.ConversionFactor, 64)
 			if err != nil {
-				return nil, err
+				return "", err
 			}
-			newAmount := decimal.NewFromBigInt(&amount, 0).Div(decimal.NewFromFloat(conversionFactor))
-			return &newAmount, nil
+
+			f := new(big.Float)
+			f.SetPrec(236) //  IEEE 754 octuple-precision binary floating-point format: binary256
+			f.SetMode(big.ToNearestEven)
+			fWei := new(big.Float)
+			fWei.SetPrec(236) //  IEEE 754 octuple-precision binary floating-point format: binary256
+			fWei.SetMode(big.ToNearestEven)
+			value := f.Quo(fWei.SetInt(&amount), big.NewFloat(conversionFactor))
+
+			var precision int
+			if currency == enum.ETH {
+				precision = 18
+			} else if currency == enum.BTC {
+				precision = 8
+			}
+			return value.Text('f', precision), nil
 		}
 	}
-	return nil, errors.New("convertToBase amount failed")
+	return "", errors.New("convertToBase amount failed")
 }

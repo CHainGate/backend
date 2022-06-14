@@ -136,11 +136,11 @@ func (s *internalPaymentService) HandlePaymentUpdate(payment internalApi.Payment
 
 func (s *internalPaymentService) callWebhook(payment *model.Payment) error {
 	currentState := payment.PaymentStates[0] //states are sorted
-	payAmount, err := utils.ConvertAmountToBase(payment.PayCurrency, currentState.PayAmount.Int)
+	payAmount, err := utils.ConvertAmountToBaseString(payment.PayCurrency, currentState.PayAmount.Int)
 	if err != nil {
 		return err
 	}
-	actuallyPaid, err := utils.ConvertAmountToBase(payment.PayCurrency, currentState.ActuallyPaid.Int)
+	actuallyPaid, err := utils.ConvertAmountToBaseString(payment.PayCurrency, currentState.ActuallyPaid.Int)
 	if err != nil {
 		return err
 	}
@@ -150,9 +150,9 @@ func (s *internalPaymentService) callWebhook(payment *model.Payment) error {
 			PayAddress:    payment.PayAddress,
 			PriceAmount:   payment.PriceAmount,
 			PriceCurrency: payment.PriceCurrency.String(),
-			PayAmount:     payAmount.String(),
+			PayAmount:     payAmount,
 			PayCurrency:   payment.PayCurrency.String(),
-			ActuallyPaid:  actuallyPaid.String(),
+			ActuallyPaid:  actuallyPaid,
 			PaymentState:  currentState.PaymentState.String(),
 			CreatedAt:     payment.CreatedAt,
 			UpdatedAt:     payment.UpdatedAt,

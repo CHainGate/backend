@@ -77,11 +77,11 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	payAmount, err := utils.ConvertAmountToBase(payment.PayCurrency, payment.PaymentStates[0].PayAmount.Int)
+	payAmount, err := utils.ConvertAmountToBaseString(payment.PayCurrency, payment.PaymentStates[0].PayAmount.Int)
 	if err != nil {
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
-	actuallyPaid, err := utils.ConvertAmountToBase(payment.PayCurrency, payment.PaymentStates[0].ActuallyPaid.Int)
+	actuallyPaid, err := utils.ConvertAmountToBaseString(payment.PayCurrency, payment.PaymentStates[0].ActuallyPaid.Int)
 	if err != nil {
 		return publicApi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -91,9 +91,9 @@ func (s *PaymentApiService) NewPayment(_ context.Context, xAPIKEY string, paymen
 		PayAddress:    payment.PayAddress,
 		PriceAmount:   payment.PriceAmount,
 		PriceCurrency: payment.PriceCurrency.String(),
-		PayAmount:     payAmount.String(),
+		PayAmount:     payAmount,
 		PayCurrency:   payment.PayCurrency.String(),
-		ActuallyPaid:  actuallyPaid.String(),
+		ActuallyPaid:  actuallyPaid,
 		CallbackUrl:   payment.CallbackUrl,
 		PaymentState:  payment.PaymentStates[0].PaymentState.String(),
 		CreatedAt:     payment.CreatedAt,
